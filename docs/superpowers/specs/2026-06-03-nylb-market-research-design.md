@@ -110,8 +110,8 @@
 
 | 모듈 | 역할 | 인터페이스(계약) |
 |------|------|-----------------|
-| `collectors/{youtube,naver,google_trends,instagram}.py` | 소스별 수집 | `collect(query: Query, lens: Lens) -> CollectResult` |
-| `core/schema.py` | 공통 데이터 모델 | `Item`, `ScanResult`, `Query`, `CollectResult`, `CollectError` |
+| `collectors/{youtube,naver,google_trends,instagram}.py` | 소스별 수집 | `collect(query: dict, lens: str) -> CollectResult` |
+| `core/schema.py` | 공통 데이터 모델 | `Item`, `ScanResult`, `CollectResult`, `CollectError` |
 | `core/store.py` | 결과 저장/로드 (이음새 🗄️) | `Store.save(result)`, `Store.load(run_id)`; 구현체 `LocalJsonStore` |
 | `core/analyzer.py` | 분석 추상화 (이음새 🧠) | `Analyzer.analyze(result) -> Analysis`; Phase1 구현 `ClaudeCodeAnalyzer` |
 | `config.py` | 설정/키 로딩 | `load_config()`, `load_lenses()` |
