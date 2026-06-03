@@ -1,0 +1,15 @@
+nylb:
+  industry: bakery
+  lenses:
+    menu:
+      keywords: [베이글, 소금빵, 크로플]
+      sources: [youtube, naver, google_trends]
+      instagram_hashtags: [베이글맛집, 베이글]
+    content:
+      keywords: [베이글, 베이커리]
+      sources: [youtube]
+      instagram_hashtags: [베이글맛집]
+    competitor:
+      keywords: []
+      sources: []
+      instagram_accounts: []
