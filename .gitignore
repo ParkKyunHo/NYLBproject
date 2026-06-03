@@ -26,3 +26,6 @@ venv/
 Thumbs.db
 .idea/
 .vscode/
+
+# Claude Code local settings (commands/ stays tracked; local settings do not)
+.claude/settings.local.json
