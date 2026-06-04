@@ -44,6 +44,7 @@ def run_scan(
         "radar_seeds": lens_config.get("radar_seeds", []),
         "competitor_products": lens_config.get("competitor_products", []),
         "own_products": lens_config.get("own_products", []),
+        "synonyms": lens_config.get("synonyms", {}),
         "instagram_hashtags": lens_config.get("instagram_hashtags", []),
         "instagram_accounts": lens_config.get("instagram_accounts", []),
     }

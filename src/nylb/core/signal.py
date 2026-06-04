@@ -94,16 +94,19 @@ def recency_weight(item: Item, now: datetime) -> float:
 
 
 def score_items(result: ScanResult, now: datetime) -> dict[str, float]:
-    """Per-item recency×popularity, normalized WITHIN each source so raw YouTube
-    view counts don't swamp 0–100 trend interest."""
-    max_pop: dict[str, float] = {}
+    """Per-item recency×popularity, normalized WITHIN each (source, type) so raw
+    YouTube view counts don't swamp 0–100 trend interest — and, within
+    google_trends, so a 'Breakout' rising_query (value up to 9999) doesn't crush
+    a search_term's 0–100 interest into the floor."""
+    max_pop: dict[tuple[str, str], float] = {}
     for it in result.items:
+        key = (it.source, it.type)
         p = popularity(it)
-        if p > max_pop.get(it.source, 0.0):
-            max_pop[it.source] = p
+        if p > max_pop.get(key, 0.0):
+            max_pop[key] = p
     scores: dict[str, float] = {}
     for it in result.items:
-        mp = max_pop.get(it.source, 0.0)
+        mp = max_pop.get((it.source, it.type), 0.0)
         pop = popularity(it)
         norm = (pop / mp) if mp > 0 else 0.0
         scores[item_key(it)] = norm * recency_weight(it, now)

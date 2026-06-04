@@ -107,3 +107,18 @@ def test_score_items_recency_breaks_ties():
                      items=[fresh, old], started_at=NOW, finished_at=NOW)
     scores = score_items(res, NOW)
     assert scores[item_key(fresh)] > scores[item_key(old)]
+
+
+def test_score_items_rising_query_does_not_crush_interest():
+    # google_trends emits both search_term (interest 0-100) and rising_query
+    # (value up to 9999 for "Breakout"). Normalizing per (source, type) keeps a
+    # real interest term meaningful instead of being divided by 9999.
+    interest = Item(source="google_trends", lens="menu", type="search_term",
+                    title="베이글", url="g1", metrics={"interest": 80}, collected_at=NOW)
+    breakout = Item(source="google_trends", lens="menu", type="rising_query",
+                    title="베이글 래빗", url="g2", metrics={"value": 9999}, collected_at=NOW)
+    res = ScanResult(run_id="r", store_id="nylb", lens="menu", query={},
+                     items=[interest, breakout], started_at=NOW, finished_at=NOW)
+    scores = score_items(res, NOW)
+    assert scores[item_key(interest)] == pytest.approx(1.0)   # not crushed by the 9999
+    assert scores[item_key(breakout)] == pytest.approx(1.0)

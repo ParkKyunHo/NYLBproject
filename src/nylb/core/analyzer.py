@@ -20,14 +20,19 @@ def cross_channel_terms(result: ScanResult, top_n: int = 10,
         if item.source == "google_trends":
             candidates.add(item.title)
 
+    # A keyword's synonyms count toward its channel breadth too — otherwise an
+    # item kept ONLY by a synonym (the relevance filter does expand synonyms)
+    # would be invisible here and undercount the term's cross-channel signal.
+    synonyms = result.query.get("synonyms", {}) or {}
+
     rows: list[dict] = []
     for term in candidates:
-        needle = term.lower()
+        needles = [term.lower()] + [s.lower() for s in synonyms.get(term, [])]
         channels: set[str] = set()
         signal = 0.0
         for item in result.items:
             haystack = f"{item.title} {item.text or ''}".lower()
-            if needle in haystack:
+            if any(n in haystack for n in needles):
                 channels.add(item.source)
                 signal += scores.get(item_key(item), 0.0)
         if channels:

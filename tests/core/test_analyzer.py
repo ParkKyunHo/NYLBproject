@@ -64,6 +64,24 @@ def test_cross_channel_terms_ranks_by_channel_count():
     assert soup["channel_count"] == 1
 
 
+def test_cross_channel_counts_synonym_kept_item():
+    # an English-title item kept by the synonym "bagel" must count toward
+    # 베이글's channel breadth, matching the filter's synonym-awareness
+    items = [
+        Item(source="youtube", lens="menu", type="video", title="Best BAGEL in Seoul",
+             metrics={"views": 1000}, collected_at=NOW),
+        Item(source="naver", lens="menu", type="blog", title="베이글 맛집 후기",
+             collected_at=NOW),
+    ]
+    res = ScanResult(run_id="rsy", store_id="nylb", lens="menu",
+                     query={"keywords": ["베이글"], "synonyms": {"베이글": ["bagel"]}},
+                     items=items, started_at=NOW, finished_at=NOW)
+    rows = cross_channel_terms(res)
+    bagel = next(r for r in rows if r["term"] == "베이글")
+    assert bagel["channel_count"] == 2                       # youtube (synonym) + naver
+    assert set(bagel["channels"]) == {"youtube", "naver"}
+
+
 def test_prepare_includes_cross_channel_section():
     digest = ClaudeCodeAnalyzer().prepare(_cross_result())
     assert "채널 교차 핫 키워드" in digest
