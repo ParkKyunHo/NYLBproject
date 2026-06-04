@@ -35,6 +35,14 @@ def test_parse_handles_missing_keys():
     assert items == []
 
 
+def test_rising_value_coercion():
+    assert gt._rising_value(250) == 250
+    assert gt._rising_value("90") == 90
+    assert gt._rising_value("Breakout") == 9999
+    assert gt._rising_value("breakout") == 9999
+    assert gt._rising_value("n/a") == 0
+
+
 def test_collect_handles_error(monkeypatch):
     def boom(query, settings):
         raise RuntimeError("trends blocked")

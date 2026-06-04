@@ -50,7 +50,7 @@ def extract_chart_data(result: ScanResult) -> dict:
             hay = f"{it.title} {it.text or ''}"
             if kw in hay:
                 row[it.source] += 1
-        matrix[kw] = dict(row)
+        matrix[kw] = {s: row.get(s, 0) for s in ("youtube", "naver", "google_trends")}
 
     return {
         "counts": dict(counts),

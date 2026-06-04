@@ -51,6 +51,14 @@ def test_matrix_counts_text_presence():
     assert data["matrix"]["베이글"]["naver"] == 1
 
 
+def test_matrix_fills_zero_for_unmatched_channels():
+    data = extract_chart_data(_result())
+    # 소금빵 appears only in the naver blog text, not youtube/google_trends
+    row = data["matrix"]["소금빵"]
+    assert set(row) == {"youtube", "naver", "google_trends"}
+    assert row["youtube"] == 0 and row["google_trends"] == 0
+
+
 def test_rising_collected():
     data = extract_chart_data(_result())
     assert data["rising"][0]["query"] == "베이글 샌드위치"

@@ -7,6 +7,15 @@ from nylb.core.schema import CollectError, CollectResult, Item
 SOURCE = "google_trends"
 
 
+def _rising_value(v) -> int:
+    """pytrends rising values are ints, except 'Breakout' (>5000% surge)."""
+    s = str(v).strip()
+    try:
+        return int(s)
+    except ValueError:
+        return 9999 if s.lower() == "breakout" else 0
+
+
 def _fetch(query: dict, settings: dict) -> dict:
     from pytrends.request import TrendReq
 
@@ -30,7 +39,7 @@ def _fetch(query: dict, settings: dict) -> dict:
             if rising_df is not None:
                 for _, row in rising_df.head(5).iterrows():
                     out["rising"].append({"seed": seed, "query": str(row["query"]),
-                                          "value": int(row["value"])})
+                                          "value": _rising_value(row["value"])})
     except Exception:
         pass
     return out
