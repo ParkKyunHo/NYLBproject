@@ -55,11 +55,16 @@ def _parse(pages: list[dict], lens: str, collected_at: datetime) -> list[Item]:
         prod = _find_product(json.loads(m.group(1)), _goods_id(pg["url"]))
         if not prod:
             continue
+        base = prod.get("basePrice")
+        disc = prod.get("discountedPrice")
+        price = disc if disc is not None else base       # fall back to list price
+        if price is None:                                # no usable price → skip, don't crash others
+            continue
         items.append(Item(
             source=SOURCE, lens=lens, type="product",
             title=str(prod["name"]), url=pg["url"], author=pg.get("brand"),
-            metrics={"price": float(prod["discountedPrice"]),
-                     "base_price": float(prod["basePrice"])},
+            metrics={"price": float(price),
+                     "base_price": float(base) if base is not None else float(price)},
             collected_at=collected_at, raw={"goods_id": _goods_id(pg["url"])},
         ))
     return items
@@ -72,16 +77,19 @@ def _fetch(query: dict, settings: dict) -> list[dict]:
     live_calls = 0
     for p in products:
         url = p["url"]
-        html = get_cached(url, ttl_days=7)
-        if html is None:
-            if live_calls:
-                time.sleep(1.5)            # polite rate-limit between live requests
-            live_calls += 1
-            r = httpx.get(url, headers=headers, timeout=25, follow_redirects=True)
-            r.raise_for_status()
-            html = r.text
-            put_cache(url, html)
-        pages.append({"brand": p.get("brand"), "url": url, "html": html})
+        try:
+            html = get_cached(url, ttl_days=7)
+            if html is None:
+                if live_calls:
+                    time.sleep(1.5)        # polite rate-limit between live requests
+                live_calls += 1
+                r = httpx.get(url, headers=headers, timeout=25, follow_redirects=True)
+                r.raise_for_status()
+                html = r.text
+                put_cache(url, html)
+            pages.append({"brand": p.get("brand"), "url": url, "html": html})
+        except Exception:
+            continue                       # one bad URL must not drop the others
     return pages
 
 

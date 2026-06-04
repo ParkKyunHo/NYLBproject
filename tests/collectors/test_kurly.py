@@ -36,6 +36,28 @@ def test_parse_skips_page_without_next_data():
     assert k._parse(pages, "competitor", NOW) == []
 
 
+_NULL_DISCOUNT = ('<script id="__NEXT_DATA__" type="application/json">'
+                  '{"props":{"pageProps":{"product":'
+                  '{"no":1000773557,"name":"런던베이글뮤지엄 세트","basePrice":40200,"discountedPrice":null}'
+                  '}}}</script>')
+
+
+def test_parse_falls_back_to_base_when_discount_null():
+    pages = [{"brand": "LBM", "url": "https://www.kurly.com/goods/1000773557", "html": _NULL_DISCOUNT}]
+    items = k._parse(pages, "competitor", NOW)
+    assert len(items) == 1
+    assert items[0].metrics["price"] == 40200.0
+    assert items[0].metrics["base_price"] == 40200.0
+
+
+def test_parse_skips_when_no_price():
+    html = ('<script id="__NEXT_DATA__" type="application/json">'
+            '{"props":{"pageProps":{"product":'
+            '{"no":5,"name":"품절","basePrice":null,"discountedPrice":null}}}}</script>')
+    pages = [{"brand": "x", "url": "https://www.kurly.com/goods/5", "html": html}]
+    assert k._parse(pages, "competitor", NOW) == []
+
+
 def test_collect_handles_error(monkeypatch):
     def boom(query, settings):
         raise RuntimeError("blocked")
