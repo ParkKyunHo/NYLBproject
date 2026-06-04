@@ -88,3 +88,19 @@ def test_run_scan_passes_competitor_products(tmp_path):
 def test_default_collectors_include_kurly():
     from nylb.core.scan import DEFAULT_COLLECTORS
     assert "kurly" in DEFAULT_COLLECTORS
+
+
+def test_run_scan_passes_own_products(tmp_path):
+    seen = {}
+    def fake_kurly(query, lens, *, settings, collected_at):
+        seen["own"] = query.get("own_products")
+        return CollectResult()
+    store = LocalJsonStore(base_dir=tmp_path)
+    lens_config = {"sources": ["kurly"],
+                   "own_products": [{"product": "베이글", "category": "베이글",
+                                     "price": 3500, "match_key": "베이글"}]}
+    run_scan("competitor", store_id="nylb", lens_config=lens_config, settings={},
+             store=store, run_id="ro", collected_at=NOW,
+             collectors={"kurly": fake_kurly})
+    assert seen["own"] == [{"product": "베이글", "category": "베이글",
+                            "price": 3500, "match_key": "베이글"}]
