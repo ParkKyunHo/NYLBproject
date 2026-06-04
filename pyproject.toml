@@ -9,6 +9,7 @@ dependencies = [
   "pyyaml>=6.0",
   "python-dotenv>=1.0",
   "pytrends>=4.9",
+  "supabase>=2.4",
 ]
 
 [project.optional-dependencies]
