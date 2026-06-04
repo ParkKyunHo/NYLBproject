@@ -163,6 +163,26 @@ cc.appendChild(h("div",{class:"note"}, DATA.chart.note));
 cs.appendChild(cc);
 app.appendChild(cs);
 
+/* INTEREST RANKING — 종목별 검색 관심도 (가장 직관적인 "지금 뜨는 종목" 뷰) */
+(function(){
+  const rk=DATA.interest_ranking||[];
+  if(!rk.length) return;
+  const sec=sect("🍞","검색 관심도 랭킹","사람들이 지금 어떤 베이커리·디저트를 검색하나 ("+M.trend_label+", 0~100)");
+  const card=h("div",{class:"card"});
+  const maxv=Math.max.apply(null, rk.map(x=>x.interest).concat([1]));
+  rk.forEach(x=>{
+    const row=h("div",{style:"display:grid;grid-template-columns:130px 1fr 40px;align-items:center;gap:10px;margin:7px 0"});
+    row.appendChild(h("div",{style:"font-weight:700;font-size:13px"+(x.core?";color:var(--accent)":"")}, x.term+(x.core?" ★":"")));
+    const bar=h("div",{class:"bar",style:"height:15px;background:#f0e7da"});
+    bar.appendChild(h("i",{style:"width:"+(x.interest/maxv*100)+"%;background:"+(x.core?"var(--bagel)":"var(--salt)")}));
+    row.appendChild(bar);
+    row.appendChild(h("div",{style:"font-weight:800;font-size:13px;text-align:right"},String(Math.round(x.interest))));
+    card.appendChild(row);
+  });
+  card.appendChild(h("div",{class:"note"},"★ = 우리 코어(베이글·소금빵·크로플), 파란 막대. 주황 막대는 레이더 인접 트렌드. 막대가 길수록 지금 한국 검색 관심이 높음."));
+  sec.appendChild(card); app.appendChild(sec);
+})();
+
 function buildChart(){
   const W=760,H=340,L=48,R=24,T=24,B=44, pw=W-L-R, ph=H-T-B, ymax=DATA.chart.ymax;
   const dates=DATA.chart.dates, n=dates.length;
@@ -171,11 +191,14 @@ function buildChart(){
   const svg=document.createElementNS(NS,"svg");
   svg.setAttribute("viewBox","0 0 "+W+" "+H); svg.setAttribute("width","100%");
   function sv(tag,a){const e=document.createElementNS(NS,tag);for(const k in a)e.setAttribute(k,a[k]);return e;}
-  [0,15,30,45].forEach(g=>{
+  [0,1,2,3].map(i=>Math.round(ymax*i/3)).forEach(g=>{
     svg.appendChild(sv("line",{x1:L,y1:Y(g),x2:W-R,y2:Y(g),stroke:"#ece3d8","stroke-width":1}));
     const t=sv("text",{x:L-8,y:Y(g)+4,"text-anchor":"end","font-size":11,fill:"#9b8f80"});t.textContent=g;svg.appendChild(t);
   });
-  dates.forEach((d,i)=>{const t=sv("text",{x:X(i),y:H-16,"text-anchor":"middle","font-size":11,fill:"#9b8f80"});t.textContent=d;svg.appendChild(t);});
+  const step=Math.max(1,Math.ceil(n/8));
+  dates.forEach((d,i)=>{ if(i%step!==0 && i!==n-1) return;
+    const lab=(d.length>5)?d.slice(5).replace("-","/"):d;
+    const t=sv("text",{x:X(i),y:H-16,"text-anchor":"middle","font-size":11,fill:"#9b8f80"});t.textContent=lab;svg.appendChild(t);});
   for(const name in DATA.chart.series){const sr=DATA.chart.series[name];
     const pts=sr.v.map((v,i)=>X(i)+","+Y(v)).join(" ");
     svg.appendChild(sv("polyline",{points:pts,fill:"none",stroke:sr.color,"stroke-width":name==="크로플"?2:3,
@@ -236,7 +259,8 @@ function th(t){return h("th",null,t);}
   }
   if(rising.length){
     const c=h("div",{class:"card"});
-    c.appendChild(h("div",{class:"fmt",style:"margin-bottom:8px"},"🤖 자동발견 급상승 검색어 (Google Trends)"));
+    c.appendChild(h("div",{class:"fmt",style:"margin-bottom:6px"},"🤖 자동발견 급상승어 (미검증 — 브랜드·오타·이슈 섞일 수 있음)"));
+    c.appendChild(h("div",{style:"font-size:11.5px;color:#b08968;margin-bottom:8px"},"※ 구글이 자동 추출한 연관 급상승어입니다. 실재하지 않는 브랜드/오타가 섞일 수 있으니 '참고용 단서'로만 보세요."));
     const ul=h("ul",{class:"gaps"});
     rising.slice(0,12).forEach(x=>ul.appendChild(h("li",null,x.query+"  ·  "+x.seed+" 연관  ·  +"+Math.round(x.value))));
     c.appendChild(ul); rd.appendChild(c);
@@ -349,9 +373,13 @@ def build_dashboard(result: ScanResult, synthesis: dict, chart: dict) -> str:
         ({"term": kw, "interest": info["latest"], "peak": info["peak"]}
          for kw, info in dl.items() if kw not in core),
         key=lambda r: r["interest"], reverse=True)
+    interest_ranking = sorted(
+        ({"term": kw, "interest": round(info["latest"], 1), "core": kw in core}
+         for kw, info in dl.items()),
+        key=lambda r: r["interest"], reverse=True)
     data = {
         "meta": {
-            "brand": "NYLB · New York London Bagel",
+            "brand": "NYLB · NEW YORK LOVE BAGEL",
             "run_id": result.run_id,
             "collected": f"{result.finished_at:%Y-%m-%d}",
             "lens": result.lens,
@@ -371,6 +399,7 @@ def build_dashboard(result: ScanResult, synthesis: dict, chart: dict) -> str:
         "matrix": chart["matrix"],
         "rising": chart.get("rising", []),
         "radar_signals": radar_signals,
+        "interest_ranking": interest_ranking,
         "syn": synthesis,
     }
     return _TEMPLATE.replace("__DATA__", json.dumps(data, ensure_ascii=False))

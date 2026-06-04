@@ -52,7 +52,7 @@ def test_build_dashboard_has_no_stale_oneoff_hardcodes():
     result = _result()
     html = build_dashboard(result, SYN, extract_chart_data(result))
     for stale in ["5/31 피크", "표본 2개", "(5 agents)", "2026-05-28 ~ 06-04",
-                  "동시언급(15~18)", "(menu)</title>"]:
+                  "동시언급(15~18)", "(menu)</title>", "New York London"]:
         assert stale not in html, f"stale hardcode leaked: {stale}"
 
 
@@ -95,3 +95,14 @@ def test_radar_signals_and_rising_surface_but_stay_out_of_line_chart():
     chart_series = json.loads(html.split("const DATA = ", 1)[1].split(";\n", 1)[0])["chart"]["series"]
     assert "베이글" in chart_series             # core keyword in the line chart
     assert "탕후루" not in chart_series         # watchlist term excluded from line chart
+
+
+def test_dashboard_has_interest_ranking_and_correct_brand():
+    result = _result()
+    html = build_dashboard(result, SYN, extract_chart_data(result))
+    assert "NEW YORK LOVE BAGEL" in html       # correct store name
+    assert "New York London" not in html       # old wrong name gone
+    assert "검색 관심도 랭킹" in html           # ranking section present
+    data = json.loads(html.split("const DATA = ", 1)[1].split(";\n", 1)[0])
+    ranking = data["interest_ranking"]
+    assert any(r["term"] == "베이글" and r["core"] for r in ranking)
