@@ -15,8 +15,8 @@ nylb:
       keywords: []
       sources: [kurly]
       own_products:
-        # ⚠️ 아래 가격은 예시(placeholder) — owner가 실제 매장가로 확정할 것.
-        - {product: "플레인 크림치즈 베이글", category: "크림치즈", price: 4500, match_key: "크림치즈"}
+        # 실제 매장가(NYLB 강남본점, 다이닝코드 기준 2026-06). 크림치즈류 베이글 단품 모달가 5,500원.
+        - {product: "크림치즈 베이글(치즈류 단품)", category: "크림치즈", price: 5500, match_key: "크림치즈"}
       competitor_products:
         - {brand: "포비(FOURB)", url: "https://www.kurly.com/goods/5043336", match_key: "크림치즈", basis: "리테일 200g"}
         - {brand: "런던베이글뮤지엄", url: "https://www.kurly.com/goods/1000773557", basis: "냉동 세트"}
