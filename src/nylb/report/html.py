@@ -288,6 +288,24 @@ pt.appendChild(h("tr",null,[th("항목"),th("시장가"),th("메모")]));
 S.pricing_benchmark.forEach(p=>pt.appendChild(h("tr",null,[h("td",null,h("b",null,p.item)),h("td",null,h("b",{},p.market_price)),h("td",null,p.note)])));
 pc.appendChild(pt);pr.appendChild(pc);app.appendChild(pr);
 
+/* COMPETITORS — 경쟁사 가격 (크롤링) */
+(function(){
+  const comp=DATA.competitors||[];
+  if(!comp.length) return;
+  const sec=sect("🏷️","경쟁사 가격 (마켓컬리)","경쟁사 리테일 상품가 — 공개 상품페이지 크롤링(robots 허용·rate-limit·캐시 준수)");
+  const card=h("div",{class:"card"});const tb=h("table");
+  tb.appendChild(h("tr",null,[th("브랜드"),th("상품"),th("판매가"),th("정가")]));
+  comp.forEach(c=>tb.appendChild(h("tr",null,[
+    h("td",null,h("b",null,c.brand||"-")),
+    h("td",null,c.product||"-"),
+    h("td",null,h("b",{},c.price!=null?Math.round(c.price).toLocaleString()+"원":"-")),
+    h("td",{style:"color:#9b8f80;text-decoration:line-through"},
+      c.base_price!=null?Math.round(c.base_price).toLocaleString()+"원":"")])));
+  card.appendChild(tb);
+  card.appendChild(h("div",{class:"note"},"리테일 SKU 기준이라 매장 인스토어가와 다를 수 있음. 가격은 시점·프로모션에 따라 변동."));
+  sec.appendChild(card);app.appendChild(sec);
+})();
+
 /* CONTENT */
 const co=sect("🎬","콘텐츠·SNS 소재","");
 const cog=h("div",{class:"grid",style:"grid-template-columns:repeat(2,1fr)"});
@@ -400,6 +418,7 @@ def build_dashboard(result: ScanResult, synthesis: dict, chart: dict) -> str:
         "rising": chart.get("rising", []),
         "radar_signals": radar_signals,
         "interest_ranking": interest_ranking,
+        "competitors": chart.get("competitors", []),
         "syn": synthesis,
     }
     return _TEMPLATE.replace("__DATA__", json.dumps(data, ensure_ascii=False))

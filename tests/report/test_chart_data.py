@@ -63,3 +63,16 @@ def test_rising_collected():
     data = extract_chart_data(_result())
     assert data["rising"][0]["query"] == "베이글 샌드위치"
     assert data["rising"][0]["value"] == 250.0
+
+
+def test_competitors_extracted():
+    items = [Item(source="kurly", lens="competitor", type="product",
+                  title="[포비베이글] 크림치즈", url="https://www.kurly.com/goods/5043336",
+                  author="포비(FOURB)", metrics={"price": 8910, "base_price": 9900},
+                  collected_at=NOW)]
+    result = ScanResult(run_id="rc", store_id="nylb", lens="competitor",
+                        query={}, items=items, started_at=NOW, finished_at=NOW)
+    data = extract_chart_data(result)
+    assert data["competitors"][0]["brand"] == "포비(FOURB)"
+    assert data["competitors"][0]["price"] == 8910
+    assert data["competitors"][0]["base_price"] == 9900

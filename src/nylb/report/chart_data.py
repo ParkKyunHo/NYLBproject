@@ -52,11 +52,19 @@ def extract_chart_data(result: ScanResult) -> dict:
                 row[it.source] += 1
         matrix[kw] = {s: row.get(s, 0) for s in ("youtube", "naver", "google_trends")}
 
+    competitors = [
+        {"brand": it.author, "product": it.title,
+         "price": it.metrics.get("price"), "base_price": it.metrics.get("base_price"),
+         "url": it.url}
+        for it in result.items if it.source == "kurly"
+    ]
+
     return {
         "counts": dict(counts),
         "trends": {s: trends[s] for s in _TREND_SOURCES},
         "matrix": matrix,
         "rising": rising,
+        "competitors": competitors,
         "keywords": keywords,
         "radar_watchlist": list(result.query.get("radar_watchlist", [])),
     }

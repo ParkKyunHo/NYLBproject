@@ -106,3 +106,26 @@ def test_dashboard_has_interest_ranking_and_correct_brand():
     data = json.loads(html.split("const DATA = ", 1)[1].split(";\n", 1)[0])
     ranking = data["interest_ranking"]
     assert any(r["term"] == "베이글" and r["core"] for r in ranking)
+
+
+def _embedded_data(html):
+    return json.loads(html.split("const DATA = ", 1)[1].split(";\n", 1)[0])
+
+
+def test_competitor_data_embedded_when_present():
+    items = [Item(source="kurly", lens="competitor", type="product",
+                  title="[포비베이글] 크림치즈", url="https://www.kurly.com/goods/5043336",
+                  author="포비(FOURB)", metrics={"price": 8910, "base_price": 9900},
+                  collected_at=NOW)]
+    result = ScanResult(run_id="rc", store_id="nylb", lens="competitor",
+                        query={"keywords": []}, items=items, started_at=NOW, finished_at=NOW)
+    html = build_dashboard(result, SYN, extract_chart_data(result))
+    assert "포비(FOURB)" in html                 # competitor data embedded for the section
+    comp = _embedded_data(html)["competitors"]
+    assert comp[0]["price"] == 8910 and comp[0]["brand"] == "포비(FOURB)"
+
+
+def test_no_competitor_data_when_absent():
+    result = _result()                       # menu result, no kurly items
+    html = build_dashboard(result, SYN, extract_chart_data(result))
+    assert _embedded_data(html)["competitors"] == []   # section self-hides on empty
