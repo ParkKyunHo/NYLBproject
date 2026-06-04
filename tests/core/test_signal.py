@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
 
 from nylb.core.schema import Item
-from nylb.core.signal import is_relevant, filter_relevant
+from nylb.core.signal import is_relevant, filter_relevant, popularity, recency_weight, score_items, _item_key
+from nylb.core.schema import ScanResult
 
 NOW = datetime(2026, 6, 3, tzinfo=timezone.utc)
 
@@ -49,3 +50,52 @@ def test_filter_relevant_noop_without_keywords():
     items = [_yt("아무 제목")]
     kept, dropped = filter_relevant(items, [])
     assert len(kept) == 1 and dropped == {}
+
+
+def test_popularity_by_source():
+    yt = Item(source="youtube", lens="menu", type="video", title="t",
+              metrics={"views": 1000, "likes": 10, "comments": 2}, collected_at=NOW)
+    assert popularity(yt) == 1000 + 10 * 5 + 2 * 10
+    gt = Item(source="google_trends", lens="menu", type="search_term", title="베이글",
+              metrics={"interest": 80}, collected_at=NOW)
+    assert popularity(gt) == 80
+    nv = Item(source="naver", lens="menu", type="blog", title="t", collected_at=NOW)
+    assert popularity(nv) == 1.0
+
+
+def test_recency_weight_decays_with_age():
+    fresh = Item(source="youtube", lens="menu", type="video", title="t",
+                 published_at=NOW, collected_at=NOW)
+    old = Item(source="youtube", lens="menu", type="video", title="t",
+               published_at=datetime(2026, 4, 4, tzinfo=timezone.utc), collected_at=NOW)
+    undated = Item(source="google_trends", lens="menu", type="search_term", title="t",
+                   collected_at=NOW)
+    assert recency_weight(fresh, NOW) == 1.0
+    assert recency_weight(old, NOW) < recency_weight(fresh, NOW)   # ~60 days → decayed
+    assert recency_weight(undated, NOW) == 1.0                     # undated = neutral
+
+
+def test_score_items_normalizes_within_source():
+    # YouTube raw views are huge vs trends interest 0-100; normalization must
+    # keep them comparable (each source's max → 1.0).
+    yt_big = Item(source="youtube", lens="menu", type="video", title="big",
+                  url="y1", metrics={"views": 500000}, collected_at=NOW)
+    gt = Item(source="google_trends", lens="menu", type="search_term", title="베이글",
+              url="g1", metrics={"interest": 100}, collected_at=NOW)
+    res = ScanResult(run_id="r", store_id="nylb", lens="menu", query={},
+                     items=[yt_big, gt], started_at=NOW, finished_at=NOW)
+    scores = score_items(res, NOW)
+    assert scores[_item_key(yt_big)] == 1.0    # source-max → 1.0, not swamping
+    assert scores[_item_key(gt)] == 1.0
+
+
+def test_score_items_recency_breaks_ties():
+    fresh = Item(source="youtube", lens="menu", type="video", title="fresh", url="f",
+                 metrics={"views": 1000}, published_at=NOW, collected_at=NOW)
+    old = Item(source="youtube", lens="menu", type="video", title="old", url="o",
+               metrics={"views": 1000}, published_at=datetime(2026, 4, 4, tzinfo=timezone.utc),
+               collected_at=NOW)
+    res = ScanResult(run_id="r", store_id="nylb", lens="menu", query={},
+                     items=[fresh, old], started_at=NOW, finished_at=NOW)
+    scores = score_items(res, NOW)
+    assert scores[_item_key(fresh)] > scores[_item_key(old)]
