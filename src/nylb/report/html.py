@@ -288,6 +288,35 @@ pt.appendChild(h("tr",null,[th("항목"),th("시장가"),th("메모")]));
 S.pricing_benchmark.forEach(p=>pt.appendChild(h("tr",null,[h("td",null,h("b",null,p.item)),h("td",null,h("b",{},p.market_price)),h("td",null,p.note)])));
 pc.appendChild(pt);pr.appendChild(pc);app.appendChild(pr);
 
+/* PRICE POSITIONING — 📊 가격 포지셔닝 (NYLB vs 경쟁사) */
+(function(){
+  const cmp=DATA.comparisons||[];
+  if(!cmp.length) return;
+  const sec=sect("📊","가격 포지셔닝","NYLB 매장가 vs 경쟁사 — 차이(%)로 본 포지셔닝 (위=비쌈·빨강, 아래=쌈·초록)");
+  if(S.price_positioning)
+    sec.appendChild(h("div",{class:"insight"},[h("h3",null,"포지셔닝 인사이트"),h("p",null,S.price_positioning)]));
+  const card=h("div",{class:"card"});const tb=h("table");
+  tb.appendChild(h("tr",null,[th("카테고리"),th("NYLB"),th("경쟁사"),th("경쟁가"),th("차이")]));
+  cmp.forEach(c=>{
+    const color=c.position==="above"?"var(--down)":c.position==="below"?"var(--up)":"var(--muted)";
+    const arrow=c.position==="above"?"▲":c.position==="below"?"▼":"▬";
+    const compCell=h("td",null,[h("b",null,c.competitor_brand||"-"),
+      document.createTextNode(" "+(c.competitor_product||"")),
+      c.competitor_basis?h("span",{class:"tag",style:"margin-left:6px"},c.competitor_basis):null]);
+    const diffCell=h("td",null,h("b",{style:"color:"+color},
+      arrow+" "+(c.diff_pct>0?"+":"")+c.diff_pct+"%"));
+    tb.appendChild(h("tr",null,[
+      h("td",null,h("b",null,c.category||"-")),
+      h("td",null,(c.nylb_price!=null?Math.round(c.nylb_price).toLocaleString()+"원":"-")),
+      compCell,
+      h("td",null,(c.competitor_price!=null?Math.round(c.competitor_price).toLocaleString()+"원":"-")),
+      diffCell]));
+  });
+  card.appendChild(tb);
+  card.appendChild(h("div",{class:"note"},"※ 컬리 리테일가는 매장 단품가와 기준이 달라 직접 비교에 주의(기준 라벨 참고). 가격은 시점·프로모션에 따라 변동."));
+  sec.appendChild(card);app.appendChild(sec);
+})();
+
 /* COMPETITORS — 경쟁사 가격 (크롤링) */
 (function(){
   const comp=DATA.competitors||[];
@@ -419,6 +448,7 @@ def build_dashboard(result: ScanResult, synthesis: dict, chart: dict) -> str:
         "radar_signals": radar_signals,
         "interest_ranking": interest_ranking,
         "competitors": chart.get("competitors", []),
+        "comparisons": chart.get("comparisons", []),
         "syn": synthesis,
     }
     return _TEMPLATE.replace("__DATA__", json.dumps(data, ensure_ascii=False))

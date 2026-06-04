@@ -129,3 +129,30 @@ def test_no_competitor_data_when_absent():
     result = _result()                       # menu result, no kurly items
     html = build_dashboard(result, SYN, extract_chart_data(result))
     assert _embedded_data(html)["competitors"] == []   # section self-hides on empty
+
+
+def test_price_positioning_comparison_embedded_when_present():
+    items = [Item(source="kurly", lens="competitor", type="product",
+                  title="[포비베이글] 크림치즈", url="https://www.kurly.com/goods/5043336",
+                  author="포비(FOURB)", metrics={"price": 8910, "base_price": 9900},
+                  collected_at=NOW)]
+    result = ScanResult(run_id="rc", store_id="nylb", lens="competitor",
+        query={"own_products": [{"product": "플레인 크림치즈 베이글", "category": "크림치즈",
+                                 "price": 4500, "match_key": "크림치즈"}],
+               "competitor_products": [{"brand": "포비(FOURB)",
+                   "url": "https://www.kurly.com/goods/5043336",
+                   "match_key": "크림치즈", "basis": "리테일 200g"}]},
+        items=items, started_at=NOW, finished_at=NOW)
+    syn = dict(SYN, price_positioning="크림치즈 베이글은 포비 리테일가보다 저렴해 가격 여력 있음.")
+    html = build_dashboard(result, syn, extract_chart_data(result))
+    comp = _embedded_data(html)["comparisons"]
+    assert len(comp) == 1
+    assert comp[0]["position"] == "below"
+    assert comp[0]["competitor_basis"] == "리테일 200g"
+    assert _embedded_data(html)["syn"]["price_positioning"].startswith("크림치즈")
+
+
+def test_no_comparison_data_when_absent():
+    result = _result()                       # menu result, no own/competitor
+    html = build_dashboard(result, SYN, extract_chart_data(result))
+    assert _embedded_data(html)["comparisons"] == []
