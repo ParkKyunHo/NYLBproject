@@ -44,6 +44,16 @@ def test_fetch_uses_relevance_sort(monkeypatch):
     assert captured.get("sort") == "sim"
 
 
+def test_parse_postdate_invalid_values_do_not_crash():
+    assert nv._parse_postdate("20261340") is None   # 8 digits but month 13 / day 40
+    assert nv._parse_postdate("20260500") is None   # day 00
+    assert nv._parse_postdate("2026053") is None    # 7 chars
+    assert nv._parse_postdate("2026ab30") is None   # non-digit
+    assert nv._parse_postdate(None) is None
+    assert nv._parse_postdate("") is None
+    assert nv._parse_postdate("20260530") == datetime(2026, 5, 30, tzinfo=timezone.utc)
+
+
 def test_collect_handles_error(monkeypatch):
     def boom(query, settings):
         raise RuntimeError("401 auth")

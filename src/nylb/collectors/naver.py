@@ -26,7 +26,10 @@ def _fetch(query: dict, settings: dict) -> dict:
 
 def _parse_postdate(value: str | None) -> datetime | None:
     if value and len(value) == 8 and value.isdigit():
-        return datetime(int(value[:4]), int(value[4:6]), int(value[6:8]), tzinfo=timezone.utc)
+        try:
+            return datetime(int(value[:4]), int(value[4:6]), int(value[6:8]), tzinfo=timezone.utc)
+        except ValueError:
+            return None  # 8 digits but invalid date (e.g. month 13) → skip, don't crash batch
     return None
 
 
