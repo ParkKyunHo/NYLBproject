@@ -48,3 +48,24 @@ def test_run_scan_unknown_source_recorded(tmp_path):
     result = run_scan("menu", store_id="nylb", lens_config=lens_config, settings={},
                       store=store, run_id="r3", collected_at=NOW, collectors={})
     assert any("unknown" in e.message for e in result.errors)
+
+
+def test_run_scan_passes_radar_terms_in_query(tmp_path):
+    seen = {}
+    def fake_dl(query, lens, *, settings, collected_at):
+        seen["watchlist"] = query.get("radar_watchlist")
+        seen["seeds"] = query.get("radar_seeds")
+        return CollectResult()
+    store = LocalJsonStore(base_dir=tmp_path)
+    lens_config = {"keywords": ["베이글"], "sources": ["naver_datalab"],
+                   "radar_watchlist": ["두바이초콜릿"], "radar_seeds": ["디저트"]}
+    run_scan("menu", store_id="nylb", lens_config=lens_config, settings={},
+             store=store, run_id="r4", collected_at=NOW,
+             collectors={"naver_datalab": fake_dl})
+    assert seen["watchlist"] == ["두바이초콜릿"]
+    assert seen["seeds"] == ["디저트"]
+
+
+def test_default_collectors_include_naver_datalab():
+    from nylb.core.scan import DEFAULT_COLLECTORS
+    assert "naver_datalab" in DEFAULT_COLLECTORS
