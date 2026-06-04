@@ -24,6 +24,24 @@ def test_parse_strips_html():
     assert it.text == "요즘 핫한 곳"
     assert it.url == "https://blog.naver.com/x/1"
     assert it.author == "빵순이"
+    assert it.published_at == datetime(2026, 5, 30, tzinfo=timezone.utc)
+
+
+def test_fetch_uses_relevance_sort(monkeypatch):
+    captured = {}
+
+    class _Resp:
+        def raise_for_status(self): pass
+        def json(self): return {"items": []}
+
+    def fake_get(url, params=None, headers=None, timeout=None):
+        captured.update(params or {})
+        return _Resp()
+
+    monkeypatch.setattr(nv.httpx, "get", fake_get)
+    nv._fetch({"keywords": ["베이글"]},
+              {"naver_client_id": "a", "naver_client_secret": "b"})
+    assert captured.get("sort") == "sim"
 
 
 def test_collect_handles_error(monkeypatch):

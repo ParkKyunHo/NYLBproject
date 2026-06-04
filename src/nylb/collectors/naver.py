@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 
@@ -18,10 +18,16 @@ def _fetch(query: dict, settings: dict) -> dict:
         raise RuntimeError("NAVER credentials missing")
     keywords = " ".join(query.get("keywords", [])) or "베이글"
     headers = {"X-Naver-Client-Id": cid, "X-Naver-Client-Secret": csec}
-    params = {"query": keywords, "display": 20, "sort": "date"}
+    params = {"query": keywords, "display": 20, "sort": "sim"}
     r = httpx.get(_SEARCH_URL, params=params, headers=headers, timeout=20)
     r.raise_for_status()
     return r.json()
+
+
+def _parse_postdate(value: str | None) -> datetime | None:
+    if value and len(value) == 8 and value.isdigit():
+        return datetime(int(value[:4]), int(value[4:6]), int(value[6:8]), tzinfo=timezone.utc)
+    return None
 
 
 def _parse(payload: dict, query: dict, lens: str, collected_at: datetime) -> list[Item]:
@@ -31,6 +37,7 @@ def _parse(payload: dict, query: dict, lens: str, collected_at: datetime) -> lis
             source=SOURCE, lens=lens, type="blog",
             title=strip_html(raw.get("title", "")), url=raw.get("link"),
             text=strip_html(raw.get("description")), author=raw.get("bloggername"),
+            published_at=_parse_postdate(raw.get("postdate")),
             collected_at=collected_at, raw=raw,
         ))
     return items
