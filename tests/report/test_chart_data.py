@@ -76,3 +76,78 @@ def test_competitors_extracted():
     assert data["competitors"][0]["brand"] == "포비(FOURB)"
     assert data["competitors"][0]["price"] == 8910
     assert data["competitors"][0]["base_price"] == 9900
+
+
+def _competitor_result(own_products, competitor_products, items):
+    return ScanResult(run_id="rc", store_id="nylb", lens="competitor",
+                      query={"own_products": own_products,
+                             "competitor_products": competitor_products},
+                      items=items, started_at=NOW, finished_at=NOW)
+
+
+def test_comparison_row_built_on_match_key():
+    items = [Item(source="kurly", lens="competitor", type="product",
+                  title="[포비베이글] 크림치즈", url="https://www.kurly.com/goods/5043336",
+                  author="포비(FOURB)", metrics={"price": 8910, "base_price": 9900},
+                  collected_at=NOW)]
+    data = extract_chart_data(_competitor_result(
+        own_products=[{"product": "플레인 크림치즈 베이글", "category": "크림치즈",
+                       "price": 4500, "match_key": "크림치즈"}],
+        competitor_products=[{"brand": "포비(FOURB)",
+                              "url": "https://www.kurly.com/goods/5043336",
+                              "match_key": "크림치즈", "basis": "리테일 200g"}],
+        items=items))
+    rows = data["comparisons"]
+    assert len(rows) == 1
+    r = rows[0]
+    assert r["category"] == "크림치즈"
+    assert r["nylb_product"] == "플레인 크림치즈 베이글"
+    assert r["nylb_price"] == 4500
+    assert r["competitor_brand"] == "포비(FOURB)"
+    assert r["competitor_price"] == 8910
+    assert r["competitor_basis"] == "리테일 200g"
+    assert r["diff"] == 4500 - 8910
+    assert r["diff_pct"] == -49.5
+    assert r["position"] == "below"
+
+
+def test_no_comparison_when_match_key_absent():
+    items = [Item(source="kurly", lens="competitor", type="product",
+                  title="LBM 세트", url="https://www.kurly.com/goods/1000773557",
+                  author="런던베이글뮤지엄", metrics={"price": 40200, "base_price": 40200},
+                  collected_at=NOW)]
+    data = extract_chart_data(_competitor_result(
+        own_products=[{"product": "플레인 크림치즈 베이글", "category": "크림치즈",
+                       "price": 4500, "match_key": "크림치즈"}],
+        competitor_products=[{"brand": "런던베이글뮤지엄",
+                              "url": "https://www.kurly.com/goods/1000773557",
+                              "basis": "냉동 세트"}],          # match_key 없음
+        items=items))
+    assert data["comparisons"] == []
+    assert len(data["competitors"]) == 1          # 경쟁사는 원시 목록에 잔존
+
+
+def test_position_above_when_nylb_more_expensive():
+    items = [Item(source="kurly", lens="competitor", type="product",
+                  title="경쟁 베이글", url="u1", author="경쟁사",
+                  metrics={"price": 3000}, collected_at=NOW)]
+    data = extract_chart_data(_competitor_result(
+        own_products=[{"product": "NYLB 베이글", "category": "베이글",
+                       "price": 3500, "match_key": "베이글"}],
+        competitor_products=[{"brand": "경쟁사", "url": "u1", "match_key": "베이글"}],
+        items=items))
+    r = data["comparisons"][0]
+    assert r["position"] == "above"
+    assert r["diff_pct"] > 0
+    assert r["competitor_basis"] is None          # basis는 선택
+
+
+def test_zero_competitor_price_skipped():
+    items = [Item(source="kurly", lens="competitor", type="product",
+                  title="이상치", url="u1", author="X",
+                  metrics={"price": 0}, collected_at=NOW)]
+    data = extract_chart_data(_competitor_result(
+        own_products=[{"product": "P", "category": "C", "price": 4500, "match_key": "C"}],
+        competitor_products=[{"brand": "X", "url": "u1", "match_key": "C"}],
+        items=items))
+    assert data["comparisons"] == []
