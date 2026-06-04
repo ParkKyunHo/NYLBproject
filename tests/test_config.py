@@ -36,3 +36,11 @@ def test_load_settings_includes_supabase(monkeypatch):
     s = load_settings()
     assert s["supabase_url"] == "https://x.supabase.co"
     assert s["supabase_service_key"] == "svc-key"
+
+
+def test_menu_lens_has_synonyms():
+    from nylb.config import load_lenses, get_lens_config
+    lenses = load_lenses("config/lenses.yaml")
+    menu = get_lens_config(lenses, "nylb", "menu")
+    syn = menu.get("synonyms", {})
+    assert "bagel" in syn.get("베이글", [])
