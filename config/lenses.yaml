@@ -14,7 +14,10 @@ nylb:
     competitor:
       keywords: []
       sources: [kurly]
+      own_products:
+        # ⚠️ 아래 가격은 예시(placeholder) — owner가 실제 매장가로 확정할 것.
+        - {product: "플레인 크림치즈 베이글", category: "크림치즈", price: 4500, match_key: "크림치즈"}
       competitor_products:
-        - {brand: "포비(FOURB)", url: "https://www.kurly.com/goods/5043336"}
-        - {brand: "런던베이글뮤지엄", url: "https://www.kurly.com/goods/1000773557"}
+        - {brand: "포비(FOURB)", url: "https://www.kurly.com/goods/5043336", match_key: "크림치즈", basis: "리테일 200g"}
+        - {brand: "런던베이글뮤지엄", url: "https://www.kurly.com/goods/1000773557", basis: "냉동 세트"}
       instagram_accounts: []
