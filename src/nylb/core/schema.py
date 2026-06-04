@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-Source = Literal["youtube", "naver", "google_trends", "instagram"]
+Source = Literal["youtube", "naver", "google_trends", "naver_datalab", "instagram"]
 Lens = Literal["menu", "content", "competitor", "review"]
 
 

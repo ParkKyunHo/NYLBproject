@@ -33,3 +33,11 @@ def test_scanresult_roundtrip():
 def test_collectresult_defaults():
     cr = CollectResult()
     assert cr.items == [] and cr.errors == []
+
+
+def test_item_accepts_naver_datalab_source():
+    from datetime import datetime, timezone
+    from nylb.core.schema import Item
+    it = Item(source="naver_datalab", lens="menu", type="search_term",
+              title="베이글", collected_at=datetime(2026, 6, 4, tzinfo=timezone.utc))
+    assert it.source == "naver_datalab"
