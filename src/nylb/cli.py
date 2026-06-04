@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import argparse
+import json
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 from nylb.config import get_lens_config, load_lenses, load_settings
 from nylb.core.analyzer import ClaudeCodeAnalyzer
 from nylb.core.scan import run_scan
 from nylb.core.store import LocalJsonStore
+from nylb.report.chart_data import extract_chart_data
+from nylb.report.html import build_dashboard
 from nylb.report.writer import write_text_report
 
 
@@ -22,7 +26,15 @@ def main(argv: list[str] | None = None) -> int:
     scan_p.add_argument("--lens", required=True)
     scan_p.add_argument("--store", default="nylb")
     scan_p.add_argument("--lenses-file", default="config/lenses.yaml")
+    rh_p = sub.add_parser("report-html", help="render the analysis HTML dashboard")
+    rh_p.add_argument("--run", required=True)
+    rh_p.add_argument("--store", default="nylb")
+    rh_p.add_argument("--synthesis", default=None,
+                      help="path to synthesis JSON (default data/raw/<run>.synthesis.json)")
     args = parser.parse_args(argv)
+
+    if args.cmd == "report-html":
+        return _report_html(args)
 
     if args.cmd != "scan":
         return 1
@@ -44,4 +56,15 @@ def main(argv: list[str] | None = None) -> int:
     print(f"items={len(result.items)} errors={len(result.errors)}")
     print(f"data=data/raw/{run_id}.json")
     print(f"digest={digest_path}")
+    return 0
+
+
+def _report_html(args) -> int:
+    syn_path = args.synthesis or f"data/raw/{args.run}.synthesis.json"
+    result = LocalJsonStore().load(args.run)
+    synthesis = json.loads(Path(syn_path).read_text(encoding="utf-8"))
+    chart = extract_chart_data(result)
+    html = build_dashboard(result, synthesis, chart)
+    path = write_text_report(html, args.run, out_dir="reports", suffix=".analysis.html")
+    print(f"html={path}")
     return 0
