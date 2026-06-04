@@ -2,6 +2,12 @@ from datetime import datetime, timezone
 from nylb.core.schema import Item, CollectError, CollectResult, ScanResult
 
 
+def test_item_accepts_kurly_source():
+    it = Item(source="kurly", lens="competitor", type="product",
+              title="크림치즈", collected_at=datetime(2026, 6, 4, tzinfo=timezone.utc))
+    assert it.source == "kurly"
+
+
 def _item():
     return Item(
         source="youtube", lens="menu", type="video", title="베이글",

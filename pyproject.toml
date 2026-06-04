@@ -28,3 +28,4 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 markers = ["live: hits real external APIs (needs keys)"]
+addopts = "-m 'not live'"
