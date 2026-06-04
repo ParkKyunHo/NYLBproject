@@ -3,12 +3,14 @@ nylb:
   lenses:
     menu:
       keywords: [베이글, 소금빵, 크로플]
-      sources: [youtube, naver, google_trends]
-      instagram_hashtags: [베이글맛집, 베이글]
+      radar_watchlist: [두바이초콜릿, 탕후루, 약과, 요거트아이스크림, 마라탕후루, 베이커리]
+      radar_seeds: [베이글, 디저트, 베이커리]
+      sources: [youtube, naver, google_trends, naver_datalab]
+      # instagram_hashtags: [베이글맛집, 베이글]  # 인스타 보류 — Meta 토큰 발급 후 주석 해제
     content:
       keywords: [베이글, 베이커리]
       sources: [youtube]
-      instagram_hashtags: [베이글맛집]
+      # instagram_hashtags: [베이글맛집]  # 인스타 보류 — Meta 토큰 발급 후 주석 해제
     competitor:
       keywords: []
       sources: []
