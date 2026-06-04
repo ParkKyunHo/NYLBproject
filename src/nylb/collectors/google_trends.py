@@ -11,28 +11,46 @@ def _fetch(query: dict, settings: dict) -> dict:
     from pytrends.request import TrendReq
 
     keywords = query.get("keywords", [])[:5]
+    out: dict = {"interest": {}, "rising": []}
     if not keywords:
-        return {}
+        return out
     pytrends = TrendReq(hl="ko-KR", tz=540)
     pytrends.build_payload(keywords, timeframe="now 7-d", geo="KR")
     df = pytrends.interest_over_time()
-    out: dict[str, list[dict]] = {}
     for kw in keywords:
         if kw in df.columns:
-            out[kw] = [{"date": str(idx.date()), "value": int(val)}
-                       for idx, val in df[kw].items()]
+            out["interest"][kw] = [{"date": str(idx.date()), "value": int(val)}
+                                   for idx, val in df[kw].items()]
+    # rising adjacent-trend auto-discovery — best-effort, never break core interest
+    try:
+        related = pytrends.related_queries()
+        for seed in keywords:
+            block = related.get(seed) or {}
+            rising_df = block.get("rising")
+            if rising_df is not None:
+                for _, row in rising_df.head(5).iterrows():
+                    out["rising"].append({"seed": seed, "query": str(row["query"]),
+                                          "value": int(row["value"])})
+    except Exception:
+        pass
     return out
 
 
-def _parse(interest: dict, query: dict, lens: str, collected_at: datetime) -> list[Item]:
+def _parse(payload: dict, query: dict, lens: str, collected_at: datetime) -> list[Item]:
     items: list[Item] = []
-    for keyword, series in interest.items():
+    for keyword, series in payload.get("interest", {}).items():
         latest = float(series[-1]["value"]) if series else 0.0
         peak = float(max((p["value"] for p in series), default=0))
         items.append(Item(
             source=SOURCE, lens=lens, type="search_term",
             title=keyword, metrics={"interest": latest, "peak": peak},
             collected_at=collected_at, raw={"series": series},
+        ))
+    for r in payload.get("rising", []):
+        items.append(Item(
+            source=SOURCE, lens=lens, type="rising_query",
+            title=r["query"], metrics={"value": float(r["value"])},
+            collected_at=collected_at, raw={"seed": r["seed"]},
         ))
     return items
 
