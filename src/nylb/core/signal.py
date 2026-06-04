@@ -61,9 +61,10 @@ def filter_relevant(items: list[Item], keywords: list[str],
 _HALF_LIFE_DAYS = 30.0
 
 
-def _item_key(item: Item) -> str:
-    """Stable dict key for an item. Two items sharing a URL collide → in
-    score_items the later one's score wins (same URL = same item, so fine)."""
+def item_key(item: Item) -> str:
+    """Stable dict key for an item (public — consumed by analyzer.score lookups).
+    Two items sharing a URL collide → in score_items the later one's score wins
+    (same URL = same item, so fine)."""
     return item.url or f"{item.source}:{item.title}"
 
 
@@ -105,5 +106,5 @@ def score_items(result: ScanResult, now: datetime) -> dict[str, float]:
         mp = max_pop.get(it.source, 0.0)
         pop = popularity(it)
         norm = (pop / mp) if mp > 0 else 0.0
-        scores[_item_key(it)] = norm * recency_weight(it, now)
+        scores[item_key(it)] = norm * recency_weight(it, now)
     return scores

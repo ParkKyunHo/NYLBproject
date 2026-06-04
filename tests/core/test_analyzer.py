@@ -23,10 +23,12 @@ def test_prepare_groups_and_sorts():
     digest = ClaudeCodeAnalyzer().prepare(_result())
     assert "## youtube" in digest
     assert "## naver" in digest
-    # higher-engagement item appears before lower one
+    # higher view count → higher signal score → appears first
     assert digest.index("high view") < digest.index("low view")
     # collection errors surfaced
     assert "instagram" in digest and "skipped" in digest
+    # no drops on this fixture → no filter section
+    assert "관련성 필터" not in digest
 
 
 def test_prepare_respects_top_n():

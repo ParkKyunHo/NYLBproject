@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 
 from nylb.core.schema import Item, ScanResult
-from nylb.core.signal import is_relevant, filter_relevant, popularity, recency_weight, score_items, _item_key
+from nylb.core.signal import is_relevant, filter_relevant, popularity, recency_weight, score_items, item_key
 
 NOW = datetime(2026, 6, 3, tzinfo=timezone.utc)
 
@@ -93,8 +93,8 @@ def test_score_items_normalizes_within_source():
                      items=[yt_big, gt], started_at=NOW, finished_at=NOW)
     scores = score_items(res, NOW)
     # both undated → recency 1.0, so normalized popularity IS the final score
-    assert scores[_item_key(yt_big)] == pytest.approx(1.0)    # source-max → 1.0, not swamping
-    assert scores[_item_key(gt)] == pytest.approx(1.0)
+    assert scores[item_key(yt_big)] == pytest.approx(1.0)    # source-max → 1.0, not swamping
+    assert scores[item_key(gt)] == pytest.approx(1.0)
 
 
 def test_score_items_recency_breaks_ties():
@@ -106,4 +106,4 @@ def test_score_items_recency_breaks_ties():
     res = ScanResult(run_id="r", store_id="nylb", lens="menu", query={},
                      items=[fresh, old], started_at=NOW, finished_at=NOW)
     scores = score_items(res, NOW)
-    assert scores[_item_key(fresh)] > scores[_item_key(old)]
+    assert scores[item_key(fresh)] > scores[item_key(old)]

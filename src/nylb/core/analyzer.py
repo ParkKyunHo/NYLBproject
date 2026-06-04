@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from nylb.core.schema import ScanResult
-from nylb.core.signal import _item_key, score_items
+from nylb.core.schema import Item, ScanResult
+from nylb.core.signal import item_key, score_items
 
 
 def cross_channel_terms(result: ScanResult, top_n: int = 10,
@@ -29,7 +29,7 @@ def cross_channel_terms(result: ScanResult, top_n: int = 10,
             haystack = f"{item.title} {item.text or ''}".lower()
             if needle in haystack:
                 channels.add(item.source)
-                signal += scores.get(_item_key(item), 0.0)
+                signal += scores.get(item_key(item), 0.0)
         if channels:
             rows.append({
                 "term": term,
@@ -75,17 +75,17 @@ class ClaudeCodeAnalyzer:
                 for r in multi:
                     lines.append(
                         f"- **{r['term']}** — {r['channel_count']}개 채널 "
-                        f"({', '.join(r['channels'])}), 신호 {r['signal']}"
+                        f"({', '.join(r['channels'])}), 신호 {r['signal']:.3f}"
                     )
             else:
                 lines.append("- (2개 이상 채널에서 동시 등장한 키워드 없음)")
 
-        by_source: dict[str, list] = {}
+        by_source: dict[str, list[Item]] = {}
         for item in result.items:
             by_source.setdefault(item.source, []).append(item)
 
         for source, items in by_source.items():
-            ranked = sorted(items, key=lambda it: scores.get(_item_key(it), 0.0),
+            ranked = sorted(items, key=lambda it: scores.get(item_key(it), 0.0),
                             reverse=True)[:top_n]
             lines += ["", f"## {source} (top {len(ranked)})"]
             for it in ranked:
