@@ -213,6 +213,37 @@ mc.appendChild(h("div",{class:"note"},"네이버 동시언급 수는 대부분 '
 mx.appendChild(mc);app.appendChild(mx);
 function th(t){return h("th",null,t);}
 
+/* RADAR — 인접 트렌드 (워치리스트 + 자동발견) */
+(function(){
+  const sig=DATA.radar_signals||[], rising=DATA.rising||[], scored=S.radar||[];
+  if(!sig.length && !rising.length && !scored.length) return;
+  const rd=sect("🛰️","트렌드 레이더 — 인접 관심사","베이글 중심으로 본 음식·디저트 인접 트렌드 (워치리스트 + 자동발견)");
+  if(scored.length){
+    scored.forEach(r=>{const c=h("div",{class:"opp"});
+      c.appendChild(h("div",{class:"top"},[h("h3",null,r.trend||""),h("span",{class:"tag"},"베이글 접목 "+(r.bagel_fit||"-"))]));
+      if(r.rising_signal) c.appendChild(h("p",null,"📈 신호: "+r.rising_signal));
+      if(r.angle) c.appendChild(h("p",null,"🥯 각도: "+r.angle));
+      rd.appendChild(c);});
+  }
+  if(sig.length){
+    const c=h("div",{class:"card"});
+    c.appendChild(h("div",{class:"fmt",style:"margin-bottom:8px"},"🗂️ 워치리스트 검색 강도 ("+M.trend_label+")"));
+    const tb=h("table");
+    tb.appendChild(h("tr",null,[th("인접 트렌드"),th("검색강도"),th("피크")]));
+    sig.forEach(x=>tb.appendChild(h("tr",null,[h("td",null,h("b",null,x.term)),
+      h("td",null,String(Math.round(x.interest))),h("td",null,String(Math.round(x.peak)))])));
+    c.appendChild(tb); rd.appendChild(c);
+  }
+  if(rising.length){
+    const c=h("div",{class:"card"});
+    c.appendChild(h("div",{class:"fmt",style:"margin-bottom:8px"},"🤖 자동발견 급상승 검색어 (Google Trends)"));
+    const ul=h("ul",{class:"gaps"});
+    rising.slice(0,12).forEach(x=>ul.appendChild(h("li",null,x.query+"  ·  "+x.seed+" 연관  ·  +"+Math.round(x.value))));
+    c.appendChild(ul); rd.appendChild(c);
+  }
+  app.appendChild(rd);
+})();
+
 /* INSIGHTS */
 const ins=sect("💡","핵심 인사이트","");
 S.top_insights.forEach(i=>{const c=h("div",{class:"insight"});c.appendChild(h("h3",null,i.title));c.appendChild(h("p",null,i.detail));ins.appendChild(c);});
@@ -283,10 +314,12 @@ app.appendChild(ft);
 def _build_chart(chart: dict) -> dict:
     source = "naver_datalab" if chart["trends"].get("naver_datalab") else "google_trends"
     tsrc = chart["trends"].get(source, {})
-    dates: list[str] = sorted({d for info in tsrc.values() for d in info["daily"]})
+    core = set(chart.get("keywords", []))
+    items = [(kw, info) for kw, info in tsrc.items() if not core or kw in core]
+    dates: list[str] = sorted({d for _, info in items for d in info["daily"]})
     series: dict[str, dict] = {}
     spare = list(_PALETTE)
-    for kw, info in tsrc.items():
+    for kw, info in items:
         color = _COLORS.get(kw) or (spare.pop(0) if spare else "#888")
         series[kw] = {
             "color": color,
@@ -310,6 +343,12 @@ def build_dashboard(result: ScanResult, synthesis: dict, chart: dict) -> str:
         {"name": "Naver DataLab", "on": chart["counts"].get("naver_datalab", 0) > 0},
         {"name": "Instagram", "on": chart["counts"].get("instagram", 0) > 0},
     ]
+    core = set(chart.get("keywords", []))
+    dl = chart["trends"].get("naver_datalab", {})
+    radar_signals = sorted(
+        ({"term": kw, "interest": info["latest"], "peak": info["peak"]}
+         for kw, info in dl.items() if kw not in core),
+        key=lambda r: r["interest"], reverse=True)
     data = {
         "meta": {
             "brand": "NYLB · New York London Bagel",
@@ -331,6 +370,7 @@ def build_dashboard(result: ScanResult, synthesis: dict, chart: dict) -> str:
         },
         "matrix": chart["matrix"],
         "rising": chart.get("rising", []),
+        "radar_signals": radar_signals,
         "syn": synthesis,
     }
     return _TEMPLATE.replace("__DATA__", json.dumps(data, ensure_ascii=False))

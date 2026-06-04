@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from nylb.core.schema import Item, ScanResult
 from nylb.report.chart_data import extract_chart_data
@@ -69,3 +70,28 @@ def test_build_dashboard_reports_error_count_and_channels():
                         started_at=NOW, finished_at=NOW)
     html = build_dashboard(result, SYN, extract_chart_data(result))
     assert '"errors": 1' in html
+
+
+def test_radar_signals_and_rising_surface_but_stay_out_of_line_chart():
+    """Watchlist + auto-discovered trends must show in the radar section,
+    while the line chart stays limited to the core keywords."""
+    items = [
+        Item(source="naver_datalab", lens="menu", type="search_term", title="베이글",
+             metrics={"interest": 87, "peak": 98}, collected_at=NOW,
+             raw={"series": [{"date": "2026-06-04", "value": 87}]}),
+        Item(source="naver_datalab", lens="menu", type="search_term", title="탕후루",
+             metrics={"interest": 65, "peak": 65}, collected_at=NOW,
+             raw={"series": [{"date": "2026-06-04", "value": 65}]}),
+        Item(source="google_trends", lens="menu", type="rising_query", title="포비 베이글",
+             metrics={"value": 21700}, collected_at=NOW, raw={"seed": "베이글"}),
+    ]
+    result = ScanResult(run_id="r", store_id="nylb", lens="menu",
+                        query={"keywords": ["베이글"], "radar_watchlist": ["탕후루"]},
+                        items=items, started_at=NOW, finished_at=NOW)
+    html = build_dashboard(result, SYN, extract_chart_data(result))
+    assert "트렌드 레이더" in html            # radar section rendered
+    assert "탕후루" in html                    # watchlist signal surfaced
+    assert "포비 베이글" in html               # auto-discovered rising surfaced
+    chart_series = json.loads(html.split("const DATA = ", 1)[1].split(";\n", 1)[0])["chart"]["series"]
+    assert "베이글" in chart_series             # core keyword in the line chart
+    assert "탕후루" not in chart_series         # watchlist term excluded from line chart
