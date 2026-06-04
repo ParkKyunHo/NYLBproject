@@ -134,6 +134,7 @@ def test_run_scan_synonyms_keep_english_title(tmp_path):
                       store=store, run_id="rs", collected_at=NOW,
                       collectors={"youtube": fy})
     assert len(result.items) == 1                  # synonym let it through
+    assert result.items[0].title == "Best BAGEL in Seoul"
     assert result.dropped_by_source == {}
 
 

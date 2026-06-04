@@ -27,6 +27,7 @@ def test_scanresult_roundtrip():
     sr = ScanResult(
         run_id="r1", store_id="nylb", lens="menu", query={"keywords": ["베이글"]},
         items=[_item()], errors=[CollectError(source="naver", message="boom")],
+        dropped_by_source={"youtube": 3, "naver": 1},
         started_at=now, finished_at=now,
     )
     dumped = sr.model_dump_json()
@@ -34,6 +35,17 @@ def test_scanresult_roundtrip():
     assert loaded.run_id == "r1"
     assert loaded.items[0].title == "베이글"
     assert loaded.errors[0].source == "naver"
+    assert loaded.dropped_by_source == {"youtube": 3, "naver": 1}   # survives round-trip
+
+
+def test_scanresult_dropped_by_source_defaults_empty():
+    # old saved runs (no dropped_by_source key) still deserialize
+    now = datetime(2026, 6, 3, tzinfo=timezone.utc)
+    legacy = ('{"run_id":"r0","store_id":"nylb","lens":"menu","query":{},'
+              '"items":[],"errors":[],"started_at":"2026-06-03T00:00:00+00:00",'
+              '"finished_at":"2026-06-03T00:00:00+00:00"}')
+    loaded = ScanResult.model_validate_json(legacy)
+    assert loaded.dropped_by_source == {}
 
 
 def test_collectresult_defaults():
