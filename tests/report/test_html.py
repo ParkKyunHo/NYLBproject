@@ -43,3 +43,29 @@ def test_build_dashboard_embeds_chart_series():
     html = build_dashboard(result, SYN, extract_chart_data(result))
     assert '"베이글"' in html                 # series keyword present in embedded JSON
     assert "naver_datalab" in html            # trend source label
+
+
+def test_build_dashboard_has_no_stale_oneoff_hardcodes():
+    """The template was ported from a one-off report; ensure no run-specific
+    captions leak into every generated dashboard."""
+    result = _result()
+    html = build_dashboard(result, SYN, extract_chart_data(result))
+    for stale in ["5/31 피크", "표본 2개", "(5 agents)", "2026-05-28 ~ 06-04",
+                  "동시언급(15~18)", "(menu)</title>"]:
+        assert stale not in html, f"stale hardcode leaked: {stale}"
+
+
+def test_build_dashboard_reports_error_count_and_channels():
+    """Total-collected KPI must reflect real channel count + error count."""
+    items = [
+        Item(source="naver_datalab", lens="menu", type="search_term", title="베이글",
+             metrics={"interest": 70, "peak": 90}, collected_at=NOW,
+             raw={"series": [{"date": "2026-06-04", "value": 70}]}),
+    ]
+    from nylb.core.schema import CollectError
+    result = ScanResult(run_id="r", store_id="nylb", lens="menu",
+                        query={"keywords": ["베이글"]}, items=items,
+                        errors=[CollectError(source="google_trends", message="429")],
+                        started_at=NOW, finished_at=NOW)
+    html = build_dashboard(result, SYN, extract_chart_data(result))
+    assert '"errors": 1' in html

@@ -13,7 +13,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NYLB 종합 트렌드 분석 · 2026-06-04 (menu)</title>
+<title>NYLB 종합 트렌드 분석</title>
 <style>
   :root{
     --cream:#faf6f0; --card:#ffffff; --ink:#2d2620; --muted:#7c7268;
@@ -117,13 +117,15 @@ function h(tag, attrs, kids){
 }
 const app=document.getElementById("app");
 const M=DATA.meta, S=DATA.syn;
+document.title = "NYLB 트렌드 분석 · "+M.collected+" ("+M.lens+")";
 
 /* HERO */
 const hero=h("div",{class:"hero"});
 hero.appendChild(h("div",{class:"brand"},M.brand));
 hero.appendChild(h("h1",null,"📊 종합 트렌드 분석 — "+S.headline));
 const meta=h("div",{class:"meta"});
-["수집일 "+M.collected, "렌즈 "+M.lens, "스캔 "+M.run_id, "수집 "+M.items+"건 (YouTube "+M.counts.youtube+"·Naver "+M.counts.naver+"·Google Trends "+M.counts.google_trends+")"]
+const chanStr=Object.entries(M.counts).map(([s,n])=>s+" "+n).join("·");
+["수집일 "+M.collected, "렌즈 "+M.lens, "스캔 "+M.run_id, "수집 "+M.items+"건 ("+chanStr+")"]
   .forEach(t=>meta.appendChild(h("span",null,t)));
 hero.appendChild(meta);
 app.appendChild(hero);
@@ -134,9 +136,9 @@ function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").repl
 function sect(icon,title,sub){const s=h("section");s.appendChild(h("h2",null,[h("span",{class:"ic"},icon),title]));if(sub)s.appendChild(h("p",{class:"sub"},sub));return s;}
 
 /* KPI + momentum */
-const k=sect("📈","한눈에 보기","채널 수집량과 키워드별 검색 모멘텀 (구글 트렌드 8일)");
+const k=sect("📈","한눈에 보기","채널 수집량과 키워드별 검색 모멘텀 ("+M.trend_label+")");
 const kp=h("div",{class:"grid kpis"});
-kp.appendChild(kpi("총 수집", M.items+"건", "3개 채널 · 실패 0"));
+kp.appendChild(kpi("총 수집", M.items+"건", Object.keys(M.counts).length+"개 채널 · 실패 "+M.errors));
 S.trend_verdicts.forEach(v=>{
   const sym=v.momentum==="up"?"▲":v.momentum==="down"?"▼":"▬";
   const series=DATA.chart.series[v.keyword];
@@ -150,7 +152,7 @@ function kpi(lab,val,sub2,mom){const c=h("div",{class:"kpi"});c.appendChild(h("d
 function momLabel(m){return m==="up"?"상승":m==="down"?"하락":"보합";}
 
 /* CHART */
-const cs=sect("📉","검색 관심도 추이","Google Trends 일별 평균 (0~100, 상대 정규화) · 2026-05-28 ~ 06-04");
+const cs=sect("📉","검색 관심도 추이",M.trend_label+" 일별 지수 (0~100, 상대 정규화)"+(DATA.chart.dates.length?(" · "+DATA.chart.dates[0]+" ~ "+DATA.chart.dates[DATA.chart.dates.length-1]):""));
 const cc=h("div",{class:"card chartcard"});
 cc.appendChild(buildChart());
 const lg=h("div",{class:"legend"});
@@ -180,10 +182,6 @@ function buildChart(){
       "stroke-linejoin":"round","stroke-linecap":"round","stroke-dasharray":name==="크로플"?"4 4":""}));
     sr.v.forEach((v,i)=>svg.appendChild(sv("circle",{cx:X(i),cy:Y(v),r:name==="크로플"?2:3.2,fill:sr.color})));
   }
-  // 5/31 peak marker for 소금빵
-  const px=X(3),py=Y(41);
-  svg.appendChild(sv("circle",{cx:px,cy:py,r:5,fill:"none",stroke:"var(--salt)","stroke-width":2}));
-  const pl=sv("text",{x:px+8,y:py-2,"font-size":10.5,fill:"var(--salt)","font-weight":700});pl.textContent="5/31 피크";svg.appendChild(pl);
   return svg;
 }
 
@@ -211,7 +209,7 @@ for(const kw in DATA.matrix){const row=DATA.matrix[kw];
   naverCell.appendChild(h("div",null,String(row.naver)));naverCell.appendChild(barwrap);
   tb.appendChild(h("tr",null,[td_kw,h("td",null,String(row.youtube)),naverCell,h("td",null,String(row.google_trends))]));}
 mc.appendChild(tb);
-mc.appendChild(h("div",{class:"note"},"네이버 동시언급(15~18)은 거의 동률 — 대부분 '베이글·소금빵·크로플·파운드…' 식 디저트 백화점형 카페 나열이라 키워드 우열이 아닌 '업계 표준 진입' 신호. 역설적으로 '베이글 전문형' 빈자리가 비어 있음을 시사."));
+mc.appendChild(h("div",{class:"note"},"네이버 동시언급 수는 대부분 '디저트 나열형 카페' 글에서 함께 등장한 것이라 키워드 우열이 아닌 '업계 표준 진입' 신호로 봐야 합니다(차별 신호 아님)."));
 mx.appendChild(mc);app.appendChild(mx);
 function th(t){return h("th",null,t);}
 
@@ -229,7 +227,7 @@ S.menu_opportunities.forEach(o=>{const c=h("div",{class:"opp"});
 app.appendChild(mo);
 
 /* PRICING */
-const pr=sect("🏷️","가격 벤치마크","표본 2개 매장 — '확정'이 아닌 '잠정 가이드'");
+const pr=sect("🏷️","가격 벤치마크","시장 관측 기반 · '확정'이 아닌 '잠정 가이드'");
 const pc=h("div",{class:"card"});const pt=h("table");
 pt.appendChild(h("tr",null,[th("항목"),th("시장가"),th("메모")]));
 S.pricing_benchmark.forEach(p=>pt.appendChild(h("tr",null,[h("td",null,h("b",null,p.item)),h("td",null,h("b",{},p.market_price)),h("td",null,p.note)])));
@@ -274,7 +272,7 @@ const src=h("div",{class:"src"});
 DATA.meta.sources_status.forEach(s => src.appendChild(
   h("span",{class:"pill "+(s.on?"on":"off")}, (s.on?"✓ ":"⏸ ")+s.name)));
 ft.appendChild(src);
-ft.appendChild(h("div",{style:"margin-top:12px"},"NYLB 시장조사 도구 · 4관점 병렬 분석 → 데이터 대조 검증 → 종합 (5 agents) · 원본 data/raw/"+M.run_id+".json · 이 리포트는 향후 SaaS 웹 대시보드의 샘플 프리뷰입니다."));
+ft.appendChild(h("div",{style:"margin-top:12px"},"NYLB 시장조사 도구 · 다채널 수집 → 종합 분석 · 원본 data/raw/"+M.run_id+".json · 향후 SaaS 웹 대시보드 프리뷰."));
 app.appendChild(ft);
 </script>
 </body>
@@ -319,6 +317,7 @@ def build_dashboard(result: ScanResult, synthesis: dict, chart: dict) -> str:
             "collected": f"{result.finished_at:%Y-%m-%d}",
             "lens": result.lens,
             "items": len(result.items),
+            "errors": len(result.errors),
             "counts": chart["counts"],
             "sources_status": sources_status,
             "trend_label": label,
