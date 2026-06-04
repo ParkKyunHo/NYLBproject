@@ -21,6 +21,10 @@ venv/
 .mypy_cache/
 .ruff_cache/
 
+# Local verification artifacts (Playwright screenshots, preview renders)
+.playwright-mcp/
+/*.png
+
 # OS / editor
 .DS_Store
 Thumbs.db
