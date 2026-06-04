@@ -79,3 +79,30 @@ def test_prepare_notes_when_no_multi_channel():
     )
     digest = ClaudeCodeAnalyzer().prepare(res)
     assert "2개 이상 채널" in digest
+
+
+def test_prepare_shows_dropped_section():
+    res = ScanResult(
+        run_id="rd", store_id="nylb", lens="menu", query={"keywords": ["베이글"]},
+        items=[Item(source="youtube", lens="menu", type="video", title="베이글 영상",
+                    collected_at=NOW)],
+        dropped_by_source={"youtube": 2, "naver": 3},
+        started_at=NOW, finished_at=NOW,
+    )
+    digest = ClaudeCodeAnalyzer().prepare(res)
+    assert "관련성 필터" in digest
+    assert "youtube: 2" in digest and "naver: 3" in digest
+
+
+def test_prepare_ranks_recent_over_old_same_views():
+    items = [
+        Item(source="youtube", lens="menu", type="video", title="옛날 베이글", url="o",
+             metrics={"views": 1000},
+             published_at=datetime(2026, 4, 4, tzinfo=timezone.utc), collected_at=NOW),
+        Item(source="youtube", lens="menu", type="video", title="최신 베이글", url="f",
+             metrics={"views": 1000}, published_at=NOW, collected_at=NOW),
+    ]
+    res = ScanResult(run_id="rr", store_id="nylb", lens="menu", query={"keywords": ["베이글"]},
+                     items=items, started_at=NOW, finished_at=NOW)
+    digest = ClaudeCodeAnalyzer().prepare(res)
+    assert digest.index("최신 베이글") < digest.index("옛날 베이글")   # recency wins the tie
