@@ -16,6 +16,8 @@ def load_settings() -> dict:
         "naver_client_secret": os.getenv("NAVER_CLIENT_SECRET"),
         "instagram_graph_token": os.getenv("INSTAGRAM_GRAPH_TOKEN"),
         "instagram_user_id": os.getenv("INSTAGRAM_USER_ID"),
+        "supabase_url": os.getenv("SUPABASE_URL"),
+        "supabase_service_key": os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
     }
 
 

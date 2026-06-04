@@ -67,3 +67,24 @@ def test_report_html_subcommand(tmp_path, monkeypatch):
     out = Path("reports/run-x.analysis.html")
     assert out.exists()
     assert "베이글이 앵커" in out.read_text(encoding="utf-8")
+
+
+def test_make_store_local_is_default():
+    from nylb.cli import _make_store
+    from nylb.core.store import LocalJsonStore
+    assert isinstance(_make_store("local", "nylb", {}), LocalJsonStore)
+
+
+def test_make_store_supabase_passes_settings(monkeypatch):
+    from nylb import cli
+    captured = {}
+
+    class FakeSB:
+        def __init__(self, **kw):
+            captured.update(kw)
+
+    monkeypatch.setattr(cli, "SupabaseStore", FakeSB)
+    store = cli._make_store("supabase", "nylb",
+                            {"supabase_url": "u", "supabase_service_key": "k"})
+    assert isinstance(store, FakeSB)
+    assert captured == {"url": "u", "service_key": "k", "store_key": "nylb"}

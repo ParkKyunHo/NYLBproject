@@ -27,3 +27,12 @@ def test_get_lens_config_missing_raises(tmp_path):
         assert False, "expected KeyError"
     except KeyError:
         pass
+
+
+def test_load_settings_includes_supabase(monkeypatch):
+    monkeypatch.setenv("SUPABASE_URL", "https://x.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "svc-key")
+    from nylb.config import load_settings
+    s = load_settings()
+    assert s["supabase_url"] == "https://x.supabase.co"
+    assert s["supabase_service_key"] == "svc-key"
