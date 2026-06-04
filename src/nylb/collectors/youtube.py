@@ -14,18 +14,32 @@ _MAX_SEARCHES = 20  # cap search.list calls/scan (quota guard for the bigger key
 
 
 def _search(keywords: list[str], api_key: str) -> dict[str, dict]:
-    """Per-keyword search.list → {video_id: snippet}, deduped (IDs only here)."""
+    """Per-keyword search.list → {video_id: snippet}, deduped (IDs only here).
+
+    One keyword's failure (quota/403) doesn't lose the others' results; but if
+    EVERY search fails we re-raise so the outer handler surfaces a real error
+    instead of silently returning empty.
+    """
     snippets: dict[str, dict] = {}
-    for kw in (keywords[:_MAX_SEARCHES] or ["베이글"]):
+    kws = keywords[:_MAX_SEARCHES] or ["베이글"]
+    last_exc: Exception | None = None
+    failures = 0
+    for kw in kws:
         params = {"key": api_key, "q": kw, "part": "snippet", "type": "video",
                   "order": "relevance", "maxResults": 20, "regionCode": "KR",
                   "relevanceLanguage": "ko"}
-        r = httpx.get(_SEARCH_URL, params=params, timeout=20)
-        r.raise_for_status()
+        try:
+            r = httpx.get(_SEARCH_URL, params=params, timeout=20)
+            r.raise_for_status()
+        except Exception as exc:          # tolerate a single keyword failing
+            last_exc, failures = exc, failures + 1
+            continue
         for raw in r.json().get("items", []):
             vid = raw.get("id", {}).get("videoId")
             if vid and vid not in snippets:
                 snippets[vid] = raw.get("snippet", {})
+    if failures == len(kws) and last_exc is not None:
+        raise last_exc                    # total failure → don't hide it
     return snippets
 
 
@@ -59,7 +73,7 @@ def _parse(snippets: dict[str, dict], videos: dict[str, dict],
                 "likes": float(st.get("likeCount", 0) or 0),
                 "comments": float(st.get("commentCount", 0) or 0),
             },
-            collected_at=collected_at, raw=v or {"snippet": search_sn},
+            collected_at=collected_at, raw=v if v else {"snippet": search_sn},
         ))
     return items
 

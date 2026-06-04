@@ -65,3 +65,41 @@ def test_collect_missing_key_errors(monkeypatch):
     assert res.items == []
     assert res.errors[0].source == "youtube"
     assert "YOUTUBE_API_KEY" in res.errors[0].message
+
+
+def test_collect_dedups_across_keywords(monkeypatch):
+    # every keyword returns the same video → deduped to one item
+    monkeypatch.setattr(yt.httpx, "get", _fake_get())
+    res = yt.collect({"keywords": ["베이글", "소금빵"]}, "menu",
+                     settings={"youtube_api_key": "k"}, collected_at=NOW)
+    assert len(res.items) == 1
+    assert res.items[0].url == "https://youtu.be/abc123"
+
+
+def test_collect_one_keyword_failure_tolerated(monkeypatch):
+    # first keyword's search 403s, second succeeds → partial results survive
+    calls = {"n": 0}
+
+    def get(url, params=None, timeout=None, headers=None):
+        if url == yt._SEARCH_URL:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise httpx.HTTPError("403 quota on kw1")
+            return _Resp(_SEARCH_RESP)
+        return _Resp(_VIDEOS_RESP)
+
+    monkeypatch.setattr(yt.httpx, "get", get)
+    res = yt.collect({"keywords": ["kw1", "베이글"]}, "menu",
+                     settings={"youtube_api_key": "k"}, collected_at=NOW)
+    assert len(res.items) == 1 and res.errors == []
+
+
+def test_collect_all_searches_fail_surfaces_error(monkeypatch):
+    def get(url, params=None, timeout=None, headers=None):
+        raise httpx.HTTPError("403 quota")
+
+    monkeypatch.setattr(yt.httpx, "get", get)
+    res = yt.collect({"keywords": ["베이글", "소금빵"]}, "menu",
+                     settings={"youtube_api_key": "k"}, collected_at=NOW)
+    assert res.items == []
+    assert res.errors and res.errors[0].source == "youtube"   # total failure surfaced
