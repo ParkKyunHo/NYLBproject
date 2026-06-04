@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 
-from nylb.core.schema import Item
+import pytest
+
+from nylb.core.schema import Item, ScanResult
 from nylb.core.signal import is_relevant, filter_relevant, popularity, recency_weight, score_items, _item_key
-from nylb.core.schema import ScanResult
 
 NOW = datetime(2026, 6, 3, tzinfo=timezone.utc)
 
@@ -75,6 +76,12 @@ def test_recency_weight_decays_with_age():
     assert recency_weight(undated, NOW) == 1.0                     # undated = neutral
 
 
+def test_recency_weight_floors_at_0_1():
+    ancient = Item(source="youtube", lens="menu", type="video", title="t",
+                   published_at=datetime(2020, 1, 1, tzinfo=timezone.utc), collected_at=NOW)
+    assert recency_weight(ancient, NOW) == pytest.approx(0.1)       # clamped, never below floor
+
+
 def test_score_items_normalizes_within_source():
     # YouTube raw views are huge vs trends interest 0-100; normalization must
     # keep them comparable (each source's max → 1.0).
@@ -85,8 +92,9 @@ def test_score_items_normalizes_within_source():
     res = ScanResult(run_id="r", store_id="nylb", lens="menu", query={},
                      items=[yt_big, gt], started_at=NOW, finished_at=NOW)
     scores = score_items(res, NOW)
-    assert scores[_item_key(yt_big)] == 1.0    # source-max → 1.0, not swamping
-    assert scores[_item_key(gt)] == 1.0
+    # both undated → recency 1.0, so normalized popularity IS the final score
+    assert scores[_item_key(yt_big)] == pytest.approx(1.0)    # source-max → 1.0, not swamping
+    assert scores[_item_key(gt)] == pytest.approx(1.0)
 
 
 def test_score_items_recency_breaks_ties():

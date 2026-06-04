@@ -62,6 +62,8 @@ _HALF_LIFE_DAYS = 30.0
 
 
 def _item_key(item: Item) -> str:
+    """Stable dict key for an item. Two items sharing a URL collide → in
+    score_items the later one's score wins (same URL = same item, so fine)."""
     return item.url or f"{item.source}:{item.title}"
 
 
@@ -101,6 +103,7 @@ def score_items(result: ScanResult, now: datetime) -> dict[str, float]:
     scores: dict[str, float] = {}
     for it in result.items:
         mp = max_pop.get(it.source, 0.0)
-        norm = (popularity(it) / mp) if mp > 0 else 0.0
+        pop = popularity(it)
+        norm = (pop / mp) if mp > 0 else 0.0
         scores[_item_key(it)] = norm * recency_weight(it, now)
     return scores
