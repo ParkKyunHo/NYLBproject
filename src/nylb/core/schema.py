@@ -41,5 +41,6 @@ class ScanResult(BaseModel):
     query: dict
     items: list[Item] = Field(default_factory=list)
     errors: list[CollectError] = Field(default_factory=list)
+    dropped_by_source: dict[str, int] = Field(default_factory=dict)
     started_at: datetime
     finished_at: datetime

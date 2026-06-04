@@ -5,6 +5,7 @@ from typing import Callable
 
 from nylb.collectors import google_trends, instagram, kurly, naver, naver_datalab, youtube
 from nylb.core.schema import CollectError, ScanResult
+from nylb.core.signal import filter_relevant
 from nylb.core.store import Store
 
 Collector = Callable[..., "object"]
@@ -64,9 +65,13 @@ def run_scan(
         items.extend(res.items)
         errors.extend(res.errors)
 
+    items, dropped = filter_relevant(
+        items, query.get("keywords", []), lens_config.get("synonyms"))
+
     result = ScanResult(
         run_id=run_id, store_id=store_id, lens=lens, query=query,
-        items=items, errors=errors, started_at=collected_at, finished_at=collected_at,
+        items=items, errors=errors, dropped_by_source=dropped,
+        started_at=collected_at, finished_at=collected_at,
     )
     store.save(result)
     return result

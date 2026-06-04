@@ -8,7 +8,7 @@ NOW = datetime(2026, 6, 3, tzinfo=timezone.utc)
 
 def fake_youtube(query, lens, *, settings, collected_at):
     return CollectResult(items=[Item(source="youtube", lens=lens, type="video",
-                                     title="vid", collected_at=collected_at)])
+                                     title="베이글 vid", collected_at=collected_at)])
 
 
 def fake_naver_fail(query, lens, *, settings, collected_at):
@@ -104,3 +104,47 @@ def test_run_scan_passes_own_products(tmp_path):
              collectors={"kurly": fake_kurly})
     assert seen["own"] == [{"product": "베이글", "category": "베이글",
                             "price": 3500, "match_key": "베이글"}]
+
+
+def test_run_scan_filters_off_topic(tmp_path):
+    def fy(query, lens, *, settings, collected_at):
+        return CollectResult(items=[
+            Item(source="youtube", lens=lens, type="video", title="베이글 리뷰",
+                 collected_at=collected_at),
+            Item(source="youtube", lens=lens, type="video", title="먹방 챌린지",
+                 collected_at=collected_at),
+        ])
+    store = LocalJsonStore(base_dir=tmp_path)
+    lens_config = {"keywords": ["베이글"], "sources": ["youtube"]}
+    result = run_scan("menu", store_id="nylb", lens_config=lens_config, settings={},
+                      store=store, run_id="rf", collected_at=NOW,
+                      collectors={"youtube": fy})
+    assert [it.title for it in result.items] == ["베이글 리뷰"]
+    assert result.dropped_by_source == {"youtube": 1}
+
+
+def test_run_scan_synonyms_keep_english_title(tmp_path):
+    def fy(query, lens, *, settings, collected_at):
+        return CollectResult(items=[Item(source="youtube", lens=lens, type="video",
+                                         title="Best BAGEL in Seoul", collected_at=collected_at)])
+    store = LocalJsonStore(base_dir=tmp_path)
+    lens_config = {"keywords": ["베이글"], "sources": ["youtube"],
+                   "synonyms": {"베이글": ["bagel"]}}
+    result = run_scan("menu", store_id="nylb", lens_config=lens_config, settings={},
+                      store=store, run_id="rs", collected_at=NOW,
+                      collectors={"youtube": fy})
+    assert len(result.items) == 1                  # synonym let it through
+    assert result.dropped_by_source == {}
+
+
+def test_run_scan_no_filter_without_keywords(tmp_path):
+    def fk(query, lens, *, settings, collected_at):
+        return CollectResult(items=[Item(source="kurly", lens=lens, type="product",
+                                         title="포비 크림치즈", collected_at=collected_at)])
+    store = LocalJsonStore(base_dir=tmp_path)
+    lens_config = {"sources": ["kurly"]}           # competitor lens, no keywords
+    result = run_scan("competitor", store_id="nylb", lens_config=lens_config, settings={},
+                      store=store, run_id="rk", collected_at=NOW,
+                      collectors={"kurly": fk})
+    assert len(result.items) == 1
+    assert result.dropped_by_source == {}
