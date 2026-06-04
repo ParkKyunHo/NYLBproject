@@ -13,5 +13,8 @@ nylb:
       instagram_hashtags: [베이글맛집]
     competitor:
       keywords: []
-      sources: []
+      sources: [kurly]
+      competitor_products:
+        - {brand: "포비(FOURB)", url: "https://www.kurly.com/goods/5043336"}
+        - {brand: "런던베이글뮤지엄", url: "https://www.kurly.com/goods/1000773557"}
       instagram_accounts: []

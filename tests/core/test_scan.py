@@ -69,3 +69,22 @@ def test_run_scan_passes_radar_terms_in_query(tmp_path):
 def test_default_collectors_include_naver_datalab():
     from nylb.core.scan import DEFAULT_COLLECTORS
     assert "naver_datalab" in DEFAULT_COLLECTORS
+
+
+def test_run_scan_passes_competitor_products(tmp_path):
+    seen = {}
+    def fake_kurly(query, lens, *, settings, collected_at):
+        seen["products"] = query.get("competitor_products")
+        return CollectResult()
+    store = LocalJsonStore(base_dir=tmp_path)
+    lens_config = {"sources": ["kurly"],
+                   "competitor_products": [{"brand": "포비", "url": "u1"}]}
+    run_scan("competitor", store_id="nylb", lens_config=lens_config, settings={},
+             store=store, run_id="rc", collected_at=NOW,
+             collectors={"kurly": fake_kurly})
+    assert seen["products"] == [{"brand": "포비", "url": "u1"}]
+
+
+def test_default_collectors_include_kurly():
+    from nylb.core.scan import DEFAULT_COLLECTORS
+    assert "kurly" in DEFAULT_COLLECTORS

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Callable
 
-from nylb.collectors import google_trends, instagram, naver, naver_datalab, youtube
+from nylb.collectors import google_trends, instagram, kurly, naver, naver_datalab, youtube
 from nylb.core.schema import CollectError, ScanResult
 from nylb.core.store import Store
 
@@ -14,6 +14,7 @@ DEFAULT_COLLECTORS: dict[str, Collector] = {
     "naver": naver.collect,
     "google_trends": google_trends.collect,
     "naver_datalab": naver_datalab.collect,
+    "kurly": kurly.collect,
     "instagram": instagram.collect,
 }
 
@@ -40,6 +41,7 @@ def run_scan(
         "keywords": lens_config.get("keywords", []),
         "radar_watchlist": lens_config.get("radar_watchlist", []),
         "radar_seeds": lens_config.get("radar_seeds", []),
+        "competitor_products": lens_config.get("competitor_products", []),
         "instagram_hashtags": lens_config.get("instagram_hashtags", []),
         "instagram_accounts": lens_config.get("instagram_accounts", []),
     }
