@@ -15,7 +15,8 @@ FILTERABLE_SOURCES = {"youtube", "naver", "instagram"}
 # When adding a new Source in schema.py, decide which bucket it belongs to.
 
 
-def _norm(text: str | None) -> str:
+def normalize(text: str | None) -> str:
+    """Collapse whitespace and lowercase — shared normalizer for signal and verify."""
     return _WS.sub(" ", (text or "").lower()).strip()
 
 
@@ -29,12 +30,12 @@ def is_relevant(item: Item, keywords: list[str],
     are ever added to a lens (current keywords are multi-char and unambiguous).
     """
     synonyms = synonyms or {}
-    hay = _norm(f"{item.title} {item.text or ''}")
+    hay = normalize(f"{item.title} {item.text or ''}")
     terms: list[str] = []
     for kw in keywords:
         terms.append(kw)
         terms.extend(synonyms.get(kw, []))
-    return any(_norm(t) in hay for t in terms if t)
+    return any(normalize(t) in hay for t in terms if t)
 
 
 def filter_relevant(items: list[Item], keywords: list[str],

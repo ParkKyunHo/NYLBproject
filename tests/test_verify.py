@@ -22,6 +22,7 @@ def test_known_keyword_is_verified():
     rising = [{"seed": "베이글", "query": "베이글", "value": 5.0}]
     out = verify_rising(rising, [], datalab_terms=set(), known_terms={"베이글"})
     assert out["verified"][0]["query"] == "베이글"
+    assert out["verified"][0]["in_known"] is True
     assert out["unverified"] == []
 
 
@@ -37,6 +38,24 @@ def test_content_corroboration_threshold():
     out = verify_rising(rising, content, datalab_terms=set(), known_terms=set(),
                         min_corroboration=2)
     assert out["verified"][0]["query"] == "약과"
+    assert out["verified"][0]["corroboration"] == 2
     out2 = verify_rising(rising, content[:1], datalab_terms=set(), known_terms=set(),
                          min_corroboration=2)
     assert out2["unverified"][0]["query"] == "약과"
+
+
+def test_internal_whitespace_normalized():
+    # known term has single space; rising query has double space — normalize must collapse both
+    out = verify_rising(
+        [{"seed": "디저트", "query": "두바이  초콜릿", "value": 9.0}],
+        [],
+        datalab_terms=set(),
+        known_terms={"두바이 초콜릿"},
+    )
+    assert out["verified"] != [] and out["verified"][0]["query"] == "두바이  초콜릿"
+
+
+def test_empty_query_is_skipped():
+    out = verify_rising([{"seed": "x", "query": "", "value": 1.0}], [], set(), set())
+    assert out["verified"] == []
+    assert out["unverified"] == []

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from nylb.core.schema import Item
-from nylb.core.signal import is_relevant
+from nylb.core.signal import is_relevant, normalize
 
 
 def _corroboration(term: str, content_items: list[Item]) -> int:
@@ -25,13 +25,15 @@ def verify_rising(
     mention it. Otherwise UNVERIFIED -> quarantine (never promoted to a
     radar/competitor card). Each entry carries corroboration evidence.
     """
-    norm_known = {t.lower().strip() for t in known_terms}
-    norm_datalab = {t.lower().strip() for t in datalab_terms}
+    norm_known = {normalize(t) for t in known_terms}
+    norm_datalab = {normalize(t) for t in datalab_terms}
     verified: list[dict] = []
     unverified: list[dict] = []
     for r in rising:
         term = r.get("query", "")
-        key = term.lower().strip()
+        key = normalize(term)
+        if not key:
+            continue
         corr = _corroboration(term, content_items)
         in_known = key in norm_known
         in_datalab = key in norm_datalab
