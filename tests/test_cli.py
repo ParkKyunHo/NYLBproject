@@ -55,18 +55,16 @@ def test_report_html_subcommand(tmp_path, monkeypatch):
                                     raw={"series": [{"date": "2026-06-04", "value": 70}]})],
                         started_at=NOW, finished_at=NOW)
     LocalJsonStore(base_dir=raw).save(result)
-    (raw / "run-x.synthesis.json").write_text(
-        json.dumps({"headline": "베이글이 앵커", "executive_summary": "요약",
-                    "trend_verdicts": [], "top_insights": [], "menu_opportunities": [],
-                    "pricing_benchmark": [], "content_ideas": [], "action_plan": [],
-                    "risks": [], "data_gaps": []}, ensure_ascii=False), encoding="utf-8")
 
     monkeypatch.chdir(tmp_path)
     rc = cli.main(["report-html", "--run", "run-x"])
     assert rc == 0
     out = Path("reports/run-x.analysis.html")
     assert out.exists()
-    assert "베이글이 앵커" in out.read_text(encoding="utf-8")
+    content = out.read_text(encoding="utf-8")
+    assert "<!DOCTYPE html>" in content      # well-formed HTML generated
+    assert "run-x" in content               # run_id embedded in board data
+    assert "베이글" in content              # keyword embedded in board data
 
 
 def test_make_store_local_is_default():

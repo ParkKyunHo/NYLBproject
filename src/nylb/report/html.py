@@ -3,10 +3,8 @@ from __future__ import annotations
 import json
 
 from nylb.core.schema import ScanResult
+from nylb.report.board import build_board  # noqa: F401
 from nylb.report.chart_data import extract_chart_data  # noqa: F401  (re-export convenience)
-
-_COLORS = {"소금빵": "var(--salt)", "베이글": "var(--bagel)", "크로플": "var(--croffle)"}
-_PALETTE = ["#7c5cff", "#2f9e5b", "#d24b4b", "#e2a32f", "#1f9d57"]
 
 _TEMPLATE = r"""<!DOCTYPE html>
 <html lang="ko">
@@ -108,80 +106,71 @@ _TEMPLATE = r"""<!DOCTYPE html>
 
 <script>
 const DATA = __DATA__;
-
 function h(tag, attrs, kids){
   const e=document.createElement(tag);
   if(attrs) for(const k in attrs){ if(k==="class")e.className=attrs[k]; else if(k==="html")e.innerHTML=attrs[k]; else e.setAttribute(k,attrs[k]); }
   if(kids!=null){ (Array.isArray(kids)?kids:[kids]).forEach(c=>{ if(c==null)return; e.appendChild(typeof c==="string"?document.createTextNode(c):c); }); }
   return e;
 }
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function sect(icon,title,sub){const s=h("section");s.appendChild(h("h2",null,[h("span",{class:"ic"},icon),title]));if(sub)s.appendChild(h("p",{class:"sub"},sub));return s;}
 const app=document.getElementById("app");
-const M=DATA.meta, S=DATA.syn;
-document.title = "NYLB 트렌드 분석 · "+M.collected+" ("+M.lens+")";
+const M=DATA.meta, HL=DATA.headline;
+const ARROW={up:"▲",down:"▼",steady:"→"}, DCOL={up:"var(--up)",down:"var(--down)",steady:"var(--steady)"};
+document.title = "NYLB 의사결정 상황판 · "+M.collected+" ("+M.lens+")";
 
 /* HERO */
 const hero=h("div",{class:"hero"});
 hero.appendChild(h("div",{class:"brand"},M.brand));
-hero.appendChild(h("h1",null,"📊 종합 트렌드 분석 — "+S.headline));
+hero.appendChild(h("h1",null,"📋 의사결정 상황판"));
 const meta=h("div",{class:"meta"});
 const chanStr=Object.entries(M.counts).map(([s,n])=>s+" "+n).join("·");
-["수집일 "+M.collected, "렌즈 "+M.lens, "스캔 "+M.run_id, "수집 "+M.items+"건 ("+chanStr+")"]
-  .forEach(t=>meta.appendChild(h("span",null,t)));
-hero.appendChild(meta);
-app.appendChild(hero);
+["수집일 "+M.collected,"렌즈 "+M.lens,"스캔 "+M.run_id,"수집 "+M.items+"건 ("+chanStr+")"].forEach(t=>meta.appendChild(h("span",null,t)));
+hero.appendChild(meta); app.appendChild(hero);
 
-app.appendChild(h("div",{class:"summary",html:"<b>핵심 결론.</b> "+esc(S.executive_summary)}));
+/* SUMMARY — data-derived pointers, explicitly NOT a verdict */
+const mv=HL.biggest_mover;
+app.appendChild(h("div",{class:"summary",html:
+  "<b>한눈에.</b> 검색 관심도 최상위 = <b>"+esc(HL.strongest_signal||"-")+"</b> · 모멘텀 최대 변화 = "+
+  (mv?("<b>"+esc(mv.term)+"</b> ("+(mv.momentum>=0?"+":"")+mv.momentum+")"):"-")+
+  " · 수집 "+HL.n_collected+"건/제외 "+HL.n_dropped+"건. <i>아래는 신호일 뿐 — 판단은 사장님 몫입니다.</i>"}));
 
-function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
-function sect(icon,title,sub){const s=h("section");s.appendChild(h("h2",null,[h("span",{class:"ic"},icon),title]));if(sub)s.appendChild(h("p",{class:"sub"},sub));return s;}
-
-/* KPI + momentum */
-const k=sect("📈","한눈에 보기","채널 수집량과 키워드별 검색 모멘텀 ("+M.trend_label+")");
+/* KPIs */
+const k=sect("📈","한눈에 보기","수집 현황과 최대 변화 (평결 아님, 데이터 산출)");
 const kp=h("div",{class:"grid kpis"});
+function kpi(lab,val,sub2,col){const c=h("div",{class:"kpi"});c.appendChild(h("div",{class:"lab"},lab));
+  const vv=h("div",{class:"val"},val); if(col)vv.style.color=col; c.appendChild(vv);
+  if(sub2)c.appendChild(h("div",{class:"sub2"},sub2)); return c;}
 kp.appendChild(kpi("총 수집", M.items+"건", Object.keys(M.counts).length+"개 채널 · 실패 "+M.errors));
-S.trend_verdicts.forEach(v=>{
-  const sym=v.momentum==="up"?"▲":v.momentum==="down"?"▼":"▬";
-  const series=DATA.chart.series[v.keyword];
-  kp.appendChild(kpi(v.keyword, sym+" "+(series?(series.mom>0?"+":"")+series.mom:""), momLabel(v.momentum)+" · 피크 "+(series?series.peak:"-"), v.momentum));
-});
-k.appendChild(kp);
-app.appendChild(k);
-function kpi(lab,val,sub2,mom){const c=h("div",{class:"kpi"});c.appendChild(h("div",{class:"lab"},lab));
-  const vv=h("div",{class:"val"},val); if(mom)vv.style.color=mom==="up"?"var(--up)":mom==="down"?"var(--down)":"var(--steady)";
-  c.appendChild(vv);c.appendChild(h("div",{class:"sub2"},sub2));return c;}
-function momLabel(m){return m==="up"?"상승":m==="down"?"하락":"보합";}
+kp.appendChild(kpi("관련성 제외", HL.n_dropped+"건", "노이즈 게이트로 제외"));
+kp.appendChild(kpi("최상위 관심", esc(HL.strongest_signal||"-"), "검색 관심도 1위"));
+kp.appendChild(kpi("최대 변화", mv?esc(mv.term):"-", mv?((mv.momentum>=0?"▲ +":"▼ ")+mv.momentum+" 모멘텀"):"", mv?DCOL[mv.momentum>=0?"up":"down"]:null));
+k.appendChild(kp); app.appendChild(k);
 
-/* CHART */
-const cs=sect("📉","검색 관심도 추이",M.trend_label+" 일별 지수 (0~100, 상대 정규화)"+(DATA.chart.dates.length?(" · "+DATA.chart.dates[0]+" ~ "+DATA.chart.dates[DATA.chart.dates.length-1]):""));
-const cc=h("div",{class:"card chartcard"});
-cc.appendChild(buildChart());
-const lg=h("div",{class:"legend"});
-for(const name in DATA.chart.series){const sr=DATA.chart.series[name];
-  lg.appendChild(h("span",null,[h("i",{style:"background:"+sr.color}),name+" (피크 "+sr.peak+")"]));}
-cc.appendChild(lg);
-cc.appendChild(h("div",{class:"note"}, DATA.chart.note));
-cs.appendChild(cc);
-app.appendChild(cs);
-
-/* INTEREST RANKING — 종목별 검색 관심도 (가장 직관적인 "지금 뜨는 종목" 뷰) */
-(function(){
-  const rk=DATA.interest_ranking||[];
-  if(!rk.length) return;
-  const sec=sect("🍞","검색 관심도 랭킹","사람들이 지금 어떤 베이커리·디저트를 검색하나 ("+M.trend_label+", 0~100)");
+/* INTEREST RANKING */
+(function(){const rk=DATA.interest_ranking||[]; if(!rk.length)return;
+  const sec=sect("🍞","검색 관심도 랭킹","사람들이 지금 어떤 베이커리·디저트를 검색하나 (0~100)");
   const card=h("div",{class:"card"});
   const maxv=Math.max.apply(null, rk.map(x=>x.interest).concat([1]));
-  rk.forEach(x=>{
-    const row=h("div",{style:"display:grid;grid-template-columns:130px 1fr 40px;align-items:center;gap:10px;margin:7px 0"});
+  rk.forEach(x=>{const row=h("div",{style:"display:grid;grid-template-columns:130px 1fr 40px;align-items:center;gap:10px;margin:7px 0"});
     row.appendChild(h("div",{style:"font-weight:700;font-size:13px"+(x.core?";color:var(--accent)":"")}, x.term+(x.core?" ★":"")));
     const bar=h("div",{class:"bar",style:"height:15px;background:#f0e7da"});
     bar.appendChild(h("i",{style:"width:"+(x.interest/maxv*100)+"%;background:"+(x.core?"var(--bagel)":"var(--salt)")}));
     row.appendChild(bar);
     row.appendChild(h("div",{style:"font-weight:800;font-size:13px;text-align:right"},String(Math.round(x.interest))));
-    card.appendChild(row);
-  });
-  card.appendChild(h("div",{class:"note"},"★ = 우리 코어(베이글·소금빵·크로플), 파란 막대. 주황 막대는 레이더 인접 트렌드. 막대가 길수록 지금 한국 검색 관심이 높음."));
-  sec.appendChild(card); app.appendChild(sec);
-})();
+    card.appendChild(row);});
+  card.appendChild(h("div",{class:"note"},"★ = 우리 코어(파란 막대). 주황 = 레이더 인접 트렌드. 막대가 길수록 지금 검색 관심이 높음."));
+  sec.appendChild(card); app.appendChild(sec);})();
+
+/* CHART */
+(function(){if(!DATA.chart.dates.length)return;
+  const cs=sect("📉","검색 관심도 추이",M.trend_label+" 일별 지수 (0~100, 상대 정규화)");
+  const cc=h("div",{class:"card chartcard"}); cc.appendChild(buildChart());
+  const lg=h("div",{class:"legend"});
+  for(const name in DATA.chart.series){const sr=DATA.chart.series[name];
+    lg.appendChild(h("span",null,[h("i",{style:"background:"+sr.color}),name+" (피크 "+sr.peak+")"]));}
+  cc.appendChild(lg); cc.appendChild(h("div",{class:"note"}, DATA.chart.note));
+  cs.appendChild(cc); app.appendChild(cs);})();
 
 function buildChart(){
   const W=760,H=340,L=48,R=24,T=24,B=44, pw=W-L-R, ph=H-T-B, ymax=DATA.chart.ymax;
@@ -193,188 +182,90 @@ function buildChart(){
   function sv(tag,a){const e=document.createElementNS(NS,tag);for(const k in a)e.setAttribute(k,a[k]);return e;}
   [0,1,2,3].map(i=>Math.round(ymax*i/3)).forEach(g=>{
     svg.appendChild(sv("line",{x1:L,y1:Y(g),x2:W-R,y2:Y(g),stroke:"#ece3d8","stroke-width":1}));
-    const t=sv("text",{x:L-8,y:Y(g)+4,"text-anchor":"end","font-size":11,fill:"#9b8f80"});t.textContent=g;svg.appendChild(t);
-  });
+    const t=sv("text",{x:L-8,y:Y(g)+4,"text-anchor":"end","font-size":11,fill:"#9b8f80"});t.textContent=g;svg.appendChild(t);});
   const step=Math.max(1,Math.ceil(n/8));
   dates.forEach((d,i)=>{ if(i%step!==0 && i!==n-1) return;
     const lab=(d.length>5)?d.slice(5).replace("-","/"):d;
     const t=sv("text",{x:X(i),y:H-16,"text-anchor":"middle","font-size":11,fill:"#9b8f80"});t.textContent=lab;svg.appendChild(t);});
   for(const name in DATA.chart.series){const sr=DATA.chart.series[name];
     const pts=sr.v.map((v,i)=>X(i)+","+Y(v)).join(" ");
-    svg.appendChild(sv("polyline",{points:pts,fill:"none",stroke:sr.color,"stroke-width":name==="크로플"?2:3,
-      "stroke-linejoin":"round","stroke-linecap":"round","stroke-dasharray":name==="크로플"?"4 4":""}));
-    sr.v.forEach((v,i)=>svg.appendChild(sv("circle",{cx:X(i),cy:Y(v),r:name==="크로플"?2:3.2,fill:sr.color})));
-  }
+    svg.appendChild(sv("polyline",{points:pts,fill:"none",stroke:sr.color,"stroke-width":3,"stroke-linejoin":"round","stroke-linecap":"round"}));
+    sr.v.forEach((v,i)=>svg.appendChild(sv("circle",{cx:X(i),cy:Y(v),r:3.2,fill:sr.color})));}
   return svg;
 }
 
-/* TREND VERDICTS */
-const tv=sect("🔬","키워드별 라이프사이클 판정","검증 후 확정된 모멘텀과 단계");
-const tvg=h("div",{class:"grid verdicts"});
-const colors={"소금빵":"var(--salt)","베이글":"var(--bagel)","크로플":"var(--croffle)"};
-S.trend_verdicts.forEach(v=>{const c=h("div",{class:"vc"});c.style.borderTopColor=colors[v.keyword]||"var(--accent)";
-  c.appendChild(h("h3",null,[document.createTextNode(v.keyword),h("span",{class:"mom "+v.momentum},momLabel(v.momentum))]));
-  c.appendChild(h("div",{class:"stage"},v.stage));
-  c.appendChild(h("p",null,v.summary));tvg.appendChild(c);});
-tv.appendChild(tvg);app.appendChild(tv);
+/* CORE SIGNALS */
+(function(){const cs=DATA.core_signals||[]; if(!cs.length)return;
+  const sec=sect("🥯","핵심 메뉴 신호","코어 키워드 — 맥락 붙인 수치 (관찰만, 처방 없음)");
+  const g=h("div",{class:"grid verdicts"});
+  cs.forEach(c=>{const card=h("div",{class:"vc"});card.style.borderTopColor=DCOL[c.direction];
+    card.appendChild(h("h3",null,[document.createTextNode(c.term),
+      h("span",{class:"mom "+c.direction},ARROW[c.direction]+" "+(c.momentum>=0?"+":"")+c.momentum)]));
+    card.appendChild(h("div",{class:"stage"},"검증됨 ✓ · 피크 "+c.peak));
+    card.appendChild(h("p",null,c.caption)); g.appendChild(card);});
+  sec.appendChild(g); app.appendChild(sec);})();
 
-/* MATRIX */
-const mx=sect("🗂️","채널 교차 언급 매트릭스","각 키워드를 언급한 매장/영상 수 — 네이버 다수는 '나열형 카페'라 차별 신호 아님");
-const mc=h("div",{class:"card"});
-const tb=h("table");
-tb.appendChild(h("tr",null,[th("키워드"),th("YouTube"),th("Naver (나열형 주의)"),th("Trends")]));
-const maxN=20;
-for(const kw in DATA.matrix){const row=DATA.matrix[kw];
-  const td_kw=h("td",null,h("b",null,kw));
-  const naverCell=h("td");
-  const barwrap=h("div",{class:"bar",style:"background:#f0e7da"});
-  barwrap.appendChild(h("i",{style:"width:"+(row.naver/maxN*100)+"%;background:var(--bagel)"}));
-  naverCell.appendChild(h("div",null,String(row.naver)));naverCell.appendChild(barwrap);
-  tb.appendChild(h("tr",null,[td_kw,h("td",null,String(row.youtube)),naverCell,h("td",null,String(row.google_trends))]));}
-mc.appendChild(tb);
-mc.appendChild(h("div",{class:"note"},"네이버 동시언급 수는 대부분 '디저트 나열형 카페' 글에서 함께 등장한 것이라 키워드 우열이 아닌 '업계 표준 진입' 신호로 봐야 합니다(차별 신호 아님)."));
-mx.appendChild(mc);app.appendChild(mx);
-function th(t){return h("th",null,t);}
+/* RADAR (verified only) */
+(function(){const rd=DATA.radar||[]; if(!rd.length)return;
+  const sec=sect("🛰️","트렌드 레이더 — 인접 관심사","검증된 인접 트렌드만 (접목 판단은 사장님 몫)");
+  const g=h("div",{class:"grid verdicts"});
+  rd.forEach(c=>{const card=h("div",{class:"vc"});card.style.borderTopColor=DCOL[c.direction];
+    card.appendChild(h("h3",null,[document.createTextNode(c.term),
+      h("span",{class:"mom "+c.direction},ARROW[c.direction]+" "+(c.momentum>=0?"+":"")+c.momentum)]));
+    card.appendChild(h("div",{class:"stage"},"검증됨 ✓"));
+    card.appendChild(h("p",null,c.caption)); g.appendChild(card);});
+  sec.appendChild(g); app.appendChild(sec);})();
 
-/* RADAR — 인접 트렌드 (워치리스트 + 자동발견) */
-(function(){
-  const sig=DATA.radar_signals||[], rising=DATA.rising||[], scored=S.radar||[];
-  if(!sig.length && !rising.length && !scored.length) return;
-  const rd=sect("🛰️","트렌드 레이더 — 인접 관심사","베이글 중심으로 본 음식·디저트 인접 트렌드 (워치리스트 + 자동발견)");
-  if(scored.length){
-    scored.forEach(r=>{const c=h("div",{class:"opp"});
-      c.appendChild(h("div",{class:"top"},[h("h3",null,r.trend||""),h("span",{class:"tag"},"베이글 접목 "+(r.bagel_fit||"-"))]));
-      if(r.rising_signal) c.appendChild(h("p",null,"📈 신호: "+r.rising_signal));
-      if(r.angle) c.appendChild(h("p",null,"🥯 각도: "+r.angle));
-      rd.appendChild(c);});
-  }
-  if(sig.length){
-    const c=h("div",{class:"card"});
-    c.appendChild(h("div",{class:"fmt",style:"margin-bottom:8px"},"🗂️ 워치리스트 검색 강도 ("+M.trend_label+")"));
-    const tb=h("table");
-    tb.appendChild(h("tr",null,[th("인접 트렌드"),th("검색강도"),th("피크")]));
-    sig.forEach(x=>tb.appendChild(h("tr",null,[h("td",null,h("b",null,x.term)),
-      h("td",null,String(Math.round(x.interest))),h("td",null,String(Math.round(x.peak)))])));
-    c.appendChild(tb); rd.appendChild(c);
-  }
-  if(rising.length){
-    const c=h("div",{class:"card"});
-    c.appendChild(h("div",{class:"fmt",style:"margin-bottom:6px"},"🤖 자동발견 급상승어 (미검증 — 브랜드·오타·이슈 섞일 수 있음)"));
-    c.appendChild(h("div",{style:"font-size:11.5px;color:#b08968;margin-bottom:8px"},"※ 구글이 자동 추출한 연관 급상승어입니다. 실재하지 않는 브랜드/오타가 섞일 수 있으니 '참고용 단서'로만 보세요."));
-    const ul=h("ul",{class:"gaps"});
-    rising.slice(0,12).forEach(x=>ul.appendChild(h("li",null,x.query+"  ·  "+x.seed+" 연관  ·  +"+Math.round(x.value))));
-    c.appendChild(ul); rd.appendChild(c);
-  }
-  app.appendChild(rd);
-})();
+/* UNVERIFIED RAW — quarantine (비키 베이글 lands here) */
+(function(){const uv=DATA.unverified_raw||[]; if(!uv.length)return;
+  const sec=sect("🚧","미검증 원시신호","구글 자동발견 급상승어 — 실존 미확인. 절대 경쟁사/레이더로 취급 금지, 참고만.");
+  const card=h("div",{class:"card"});
+  card.appendChild(h("div",{style:"font-size:11.5px;color:#b08968;margin-bottom:8px"},"※ 콘텐츠·데이터랩 뒷받침이 없어 격리된 용어입니다(없는 브랜드/오타 가능). 검증 전엔 판단 근거로 쓰지 마세요."));
+  const ul=h("ul",{class:"gaps"});
+  uv.slice(0,15).forEach(x=>ul.appendChild(h("li",null, x.query+"  ·  "+(x.seed||"")+" 연관  ·  뒷받침 "+(x.corroboration||0)+"건")));
+  card.appendChild(ul); sec.appendChild(card); app.appendChild(sec);})();
 
-/* INSIGHTS */
-const ins=sect("💡","핵심 인사이트","");
-S.top_insights.forEach(i=>{const c=h("div",{class:"insight"});c.appendChild(h("h3",null,i.title));c.appendChild(h("p",null,i.detail));ins.appendChild(c);});
-app.appendChild(ins);
-
-/* MENU OPPORTUNITIES */
-const mo=sect("🥯","신메뉴 기회","실제 블로그 근거가 있는 변주 위주");
-S.menu_opportunities.forEach(o=>{const c=h("div",{class:"opp"});
-  c.appendChild(h("div",{class:"top"},[h("h3",null,o.name),h("span",{class:"tag"},o.type)]));
-  c.appendChild(h("p",null,o.why));
-  c.appendChild(h("div",{class:"price"},"💰 "+o.price_suggestion));mo.appendChild(c);});
-app.appendChild(mo);
-
-/* PRICING */
-const pr=sect("🏷️","가격 벤치마크","시장 관측 기반 · '확정'이 아닌 '잠정 가이드'");
-const pc=h("div",{class:"card"});const pt=h("table");
-pt.appendChild(h("tr",null,[th("항목"),th("시장가"),th("메모")]));
-S.pricing_benchmark.forEach(p=>pt.appendChild(h("tr",null,[h("td",null,h("b",null,p.item)),h("td",null,h("b",{},p.market_price)),h("td",null,p.note)])));
-pc.appendChild(pt);pr.appendChild(pc);app.appendChild(pr);
-
-/* PRICE POSITIONING — 📊 가격 포지셔닝 (NYLB vs 경쟁사) */
-(function(){
-  const cmp=DATA.comparisons||[];
-  if(!cmp.length) return;
-  const sec=sect("📊","가격 포지셔닝","NYLB 매장가 vs 경쟁사 — 차이(%)로 본 포지셔닝 (위=비쌈·빨강, 아래=쌈·초록)");
-  if(S.price_positioning)
-    sec.appendChild(h("div",{class:"insight"},[h("h3",null,"포지셔닝 인사이트"),h("p",null,S.price_positioning)]));
+/* PRICE POSITIONING */
+(function(){const cmp=DATA.comparisons||[]; if(!cmp.length)return;
+  const sec=sect("📊","가격 포지셔닝","NYLB 매장가 vs 경쟁사 — 차이(%) (위=비쌈·빨강, 아래=쌈·초록)");
   const card=h("div",{class:"card"});const tb=h("table");
-  tb.appendChild(h("tr",null,[th("카테고리"),th("NYLB"),th("경쟁사"),th("경쟁가"),th("차이")]));
-  cmp.forEach(c=>{
-    const color=c.position==="above"?"var(--down)":c.position==="below"?"var(--up)":"var(--muted)";
-    const arrow=c.position==="above"?"▲":c.position==="below"?"▼":"▬";
-    const compCell=h("td",null,[h("b",null,c.competitor_brand||"-"),
-      document.createTextNode(" "+(c.competitor_product||"")),
-      c.competitor_basis?h("span",{class:"tag",style:"margin-left:6px"},c.competitor_basis):null]);
-    const diffCell=h("td",null,h("b",{style:"color:"+color},
-      arrow+" "+(c.diff_pct>0?"+":"")+c.diff_pct+"%"));
+  tb.appendChild(h("tr",null,["카테고리","NYLB","경쟁사","경쟁가","차이"].map(t=>h("th",null,t))));
+  cmp.forEach(c=>{const color=c.position==="above"?"var(--down)":c.position==="below"?"var(--up)":"var(--muted)";
+    const arrow=c.position==="above"?"▲":c.position==="below"?"▼":"→";
     tb.appendChild(h("tr",null,[
       h("td",null,h("b",null,c.category||"-")),
       h("td",null,(c.nylb_price!=null?Math.round(c.nylb_price).toLocaleString()+"원":"-")),
-      compCell,
+      h("td",null,[h("b",null,c.competitor_brand||"-"),document.createTextNode(" "+(c.competitor_product||""))]),
       h("td",null,(c.competitor_price!=null?Math.round(c.competitor_price).toLocaleString()+"원":"-")),
-      diffCell]));
-  });
+      h("td",null,h("b",{style:"color:"+color},arrow+" "+(c.diff_pct>0?"+":"")+c.diff_pct+"%"))]));});
   card.appendChild(tb);
-  card.appendChild(h("div",{class:"note"},"※ 컬리 리테일가는 매장 단품가와 기준이 달라 직접 비교에 주의(기준 라벨 참고). 가격은 시점·프로모션에 따라 변동."));
-  sec.appendChild(card);app.appendChild(sec);
-})();
+  card.appendChild(h("div",{class:"note"},"※ 컬리 리테일가는 매장 단품가와 기준이 달라 직접 비교 주의(기준 라벨 참고). 시점·프로모션에 따라 변동."));
+  sec.appendChild(card); app.appendChild(sec);})();
 
-/* COMPETITORS — 경쟁사 가격 (크롤링) */
-(function(){
-  const comp=DATA.competitors||[];
-  if(!comp.length) return;
-  const sec=sect("🏷️","경쟁사 가격 (마켓컬리)","경쟁사 리테일 상품가 — 공개 상품페이지 크롤링(robots 허용·rate-limit·캐시 준수)");
+/* COMPETITORS */
+(function(){const comp=DATA.competitors||[]; if(!comp.length)return;
+  const sec=sect("🏷️","경쟁사 가격 (마켓컬리)","공개 상품페이지 크롤링 — 리테일 SKU 기준(매장가와 다를 수 있음)");
   const card=h("div",{class:"card"});const tb=h("table");
-  tb.appendChild(h("tr",null,[th("브랜드"),th("상품"),th("판매가"),th("정가")]));
+  tb.appendChild(h("tr",null,["브랜드","상품","판매가","정가"].map(t=>h("th",null,t))));
   comp.forEach(c=>tb.appendChild(h("tr",null,[
-    h("td",null,h("b",null,c.brand||"-")),
-    h("td",null,c.product||"-"),
-    h("td",null,h("b",{},c.price!=null?Math.round(c.price).toLocaleString()+"원":"-")),
-    h("td",{style:"color:#9b8f80;text-decoration:line-through"},
-      c.base_price!=null?Math.round(c.base_price).toLocaleString()+"원":"")])));
-  card.appendChild(tb);
-  card.appendChild(h("div",{class:"note"},"리테일 SKU 기준이라 매장 인스토어가와 다를 수 있음. 가격은 시점·프로모션에 따라 변동."));
-  sec.appendChild(card);app.appendChild(sec);
-})();
+    h("td",null,h("b",null,c.brand||"-")), h("td",null,c.product||"-"),
+    h("td",null,h("b",null,c.price!=null?Math.round(c.price).toLocaleString()+"원":"-")),
+    h("td",{style:"color:#9b8f80;text-decoration:line-through"},c.base_price!=null?Math.round(c.base_price).toLocaleString()+"원":"")])));
+  card.appendChild(tb); sec.appendChild(card); app.appendChild(sec);})();
 
-/* CONTENT */
-const co=sect("🎬","콘텐츠·SNS 소재","");
-const cog=h("div",{class:"grid",style:"grid-template-columns:repeat(2,1fr)"});
-S.content_ideas.forEach(c=>{const x=h("div",{class:"ci"});
-  x.appendChild(h("div",{class:"fmt"},"▶ "+c.format));x.appendChild(h("h3",null,c.idea));x.appendChild(h("p",null,c.angle));cog.appendChild(x);});
-co.appendChild(cog);app.appendChild(co);
-
-/* ACTION PLAN */
-const ap=sect("✅","실행 계획 (우선순위순)","impact·effort·기간 포함");
-S.action_plan.sort((a,b)=>a.priority-b.priority).forEach(a=>{const c=h("div",{class:"ap"});
-  c.appendChild(h("div",{class:"pri"},String(a.priority)));
-  const r=h("div");r.appendChild(h("h3",null,a.action));r.appendChild(h("p",{class:"rat"},"근거 · "+a.rationale));
-  const bd=h("div",{class:"badges"});
-  bd.appendChild(h("span",{class:"badge b-time"},"⏱ "+a.timeframe));
-  bd.appendChild(h("span",{class:"badge b-imp-"+a.impact},"임팩트 "+impKo(a.impact)));
-  bd.appendChild(h("span",{class:"badge b-eff-"+a.effort},"노력 "+impKo(a.effort)));
-  r.appendChild(bd);c.appendChild(r);ap.appendChild(c);});
-app.appendChild(ap);
-function impKo(x){return x==="high"?"높음":x==="med"?"중간":"낮음";}
-
-/* RISKS */
-const rk=sect("⚠️","리스크 & 대응","");
-const rkc=h("div",{class:"card"});const rg=h("div",{class:"risk"});
-S.risks.forEach(r=>{const d=h("div",{class:"r"});d.appendChild(h("div",null,[h("b",null,"리스크 "),document.createTextNode(r.risk)]));
-  d.appendChild(h("div",null,[h("span",null,"→ 대응: "+r.mitigation)]));rg.appendChild(d);});
-rkc.appendChild(rg);rk.appendChild(rkc);app.appendChild(rk);
-
-/* DATA GAPS */
-const dg=sect("🧪","데이터 한계 & 다음 수집 과제","");
-const dgc=h("div",{class:"card"});const ul=h("ul",{class:"gaps"});
-S.data_gaps.forEach(g=>ul.appendChild(h("li",null,g)));dgc.appendChild(ul);dg.appendChild(dgc);app.appendChild(dg);
+/* DATA TRUST */
+(function(){const dt=DATA.data_trust||[]; if(!dt.length)return;
+  const sec=sect("🧪","데이터 신뢰도 & 한계","각 수치를 얼마나 믿을지 — 판단 보정용");
+  const card=h("div",{class:"card"});const ul=h("ul",{class:"gaps"});
+  dt.forEach(d=>ul.appendChild(h("li",null,d.note))); card.appendChild(ul);
+  sec.appendChild(card); app.appendChild(sec);})();
 
 /* FOOTER */
-const ft=h("div",{class:"foot"});
-ft.appendChild(h("div",null,"데이터 출처 상태"));
+const ft=h("div",{class:"foot"}); ft.appendChild(h("div",null,"데이터 출처 상태"));
 const src=h("div",{class:"src"});
-DATA.meta.sources_status.forEach(s => src.appendChild(
-  h("span",{class:"pill "+(s.on?"on":"off")}, (s.on?"✓ ":"⏸ ")+s.name)));
+(M.sources_status||[]).forEach(s=>src.appendChild(h("span",{class:"pill "+(s.on?"on":"off")},(s.on?"✓ ":"⏸ ")+s.name)));
 ft.appendChild(src);
-ft.appendChild(h("div",{style:"margin-top:12px"},"NYLB 시장조사 도구 · 다채널 수집 → 종합 분석 · 원본 data/raw/"+M.run_id+".json · 향후 SaaS 웹 대시보드 프리뷰."));
+ft.appendChild(h("div",{style:"margin-top:12px"},"NYLB 의사결정 상황판 · 결정론 데이터 자동생성(LLM 없음) · 원본 data/raw/"+M.run_id+".json"));
 app.appendChild(ft);
 </script>
 </body>
@@ -382,73 +273,8 @@ app.appendChild(ft);
 """
 
 
-def _build_chart(chart: dict) -> dict:
-    source = "naver_datalab" if chart["trends"].get("naver_datalab") else "google_trends"
-    tsrc = chart["trends"].get(source, {})
-    core = set(chart.get("keywords", []))
-    items = [(kw, info) for kw, info in tsrc.items() if not core or kw in core]
-    dates: list[str] = sorted({d for _, info in items for d in info["daily"]})
-    series: dict[str, dict] = {}
-    spare = list(_PALETTE)
-    for kw, info in items:
-        color = _COLORS.get(kw) or (spare.pop(0) if spare else "#888")
-        series[kw] = {
-            "color": color,
-            "v": [info["daily"].get(d, 0) for d in dates],
-            "peak": info.get("peak", 0),
-            "mom": info.get("momentum", 0),
-        }
-    ymax = max([v for s in series.values() for v in s["v"]] + [5])
-    ymax = int((ymax // 5 + 1) * 5)
-    return {"dates": dates, "series": series, "ymax": ymax, "source": source}
-
-
-def build_dashboard(result: ScanResult, synthesis: dict, chart: dict) -> str:
-    chart_block = _build_chart(chart)
-    label = {"naver_datalab": "네이버 데이터랩", "google_trends": "Google Trends"}.get(
-        chart_block["source"], chart_block["source"])
-    sources_status = [
-        {"name": "YouTube", "on": chart["counts"].get("youtube", 0) > 0},
-        {"name": "Naver 검색", "on": chart["counts"].get("naver", 0) > 0},
-        {"name": "Google Trends", "on": chart["counts"].get("google_trends", 0) > 0},
-        {"name": "Naver DataLab", "on": chart["counts"].get("naver_datalab", 0) > 0},
-        {"name": "Instagram", "on": chart["counts"].get("instagram", 0) > 0},
-    ]
-    core = set(chart.get("keywords", []))
-    dl = chart["trends"].get("naver_datalab", {})
-    radar_signals = sorted(
-        ({"term": kw, "interest": info["latest"], "peak": info["peak"]}
-         for kw, info in dl.items() if kw not in core),
-        key=lambda r: r["interest"], reverse=True)
-    interest_ranking = sorted(
-        ({"term": kw, "interest": round(info["latest"], 1), "core": kw in core}
-         for kw, info in dl.items()),
-        key=lambda r: r["interest"], reverse=True)
-    data = {
-        "meta": {
-            "brand": "NYLB · NEW YORK LOVE BAGEL",
-            "run_id": result.run_id,
-            "collected": f"{result.finished_at:%Y-%m-%d}",
-            "lens": result.lens,
-            "items": len(result.items),
-            "errors": len(result.errors),
-            "counts": chart["counts"],
-            "sources_status": sources_status,
-            "trend_label": label,
-        },
-        "chart": {
-            "dates": chart_block["dates"],
-            "series": chart_block["series"],
-            "ymax": chart_block["ymax"],
-            "note": synthesis.get("chart_note")
-                    or f"{label} 기준 검색 관심도 추이. 상대 정규화(0~100) 지표이며 절대 수요 우열로 단정하지 마세요.",
-        },
-        "matrix": chart["matrix"],
-        "rising": chart.get("rising", []),
-        "radar_signals": radar_signals,
-        "interest_ranking": interest_ranking,
-        "competitors": chart.get("competitors", []),
-        "comparisons": chart.get("comparisons", []),
-        "syn": synthesis,
-    }
-    return _TEMPLATE.replace("__DATA__", json.dumps(data, ensure_ascii=False))
+def build_dashboard(result: ScanResult, chart: dict) -> str:
+    """Render the deterministic decision-support board to self-contained HTML.
+    No `synthesis` — the board is 100% data-driven (build_board)."""
+    board = build_board(result, chart)
+    return _TEMPLATE.replace("__DATA__", json.dumps(board, ensure_ascii=False))

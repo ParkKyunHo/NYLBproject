@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import argparse
-import json
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 
 from nylb.config import get_lens_config, load_lenses, load_settings
 from nylb.core.analyzer import ClaudeCodeAnalyzer
@@ -38,8 +36,6 @@ def main(argv: list[str] | None = None) -> int:
     rh_p = sub.add_parser("report-html", help="render the analysis HTML dashboard")
     rh_p.add_argument("--run", required=True)
     rh_p.add_argument("--store", default="nylb")
-    rh_p.add_argument("--synthesis", default=None,
-                      help="path to synthesis JSON (default data/raw/<run>.synthesis.json)")
     args = parser.parse_args(argv)
 
     if args.cmd == "report-html":
@@ -70,11 +66,9 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _report_html(args) -> int:
-    syn_path = args.synthesis or f"data/raw/{args.run}.synthesis.json"
     result = LocalJsonStore().load(args.run)
-    synthesis = json.loads(Path(syn_path).read_text(encoding="utf-8"))
     chart = extract_chart_data(result)
-    html = build_dashboard(result, synthesis, chart)
+    html = build_dashboard(result, chart)
     path = write_text_report(html, args.run, out_dir="reports", suffix=".analysis.html")
     print(f"html={path}")
     return 0

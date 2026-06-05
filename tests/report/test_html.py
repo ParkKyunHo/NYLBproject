@@ -30,18 +30,17 @@ def _result():
 
 def test_build_dashboard_returns_self_contained_html():
     result = _result()
-    html = build_dashboard(result, SYN, extract_chart_data(result))
+    html = build_dashboard(result, extract_chart_data(result))
     assert html.startswith("<!DOCTYPE html>")
     assert "const DATA" in html
     assert "__DATA__" not in html            # placeholder fully replaced
-    assert "베이글이 앵커" in html            # headline injected
     assert "2026-06-04-menu-abc123" in html  # run id injected
     assert "<script" in html and "</script>" in html
 
 
 def test_build_dashboard_embeds_chart_series():
     result = _result()
-    html = build_dashboard(result, SYN, extract_chart_data(result))
+    html = build_dashboard(result, extract_chart_data(result))
     assert '"베이글"' in html                 # series keyword present in embedded JSON
     assert "naver_datalab" in html            # trend source label
 
@@ -50,7 +49,7 @@ def test_build_dashboard_has_no_stale_oneoff_hardcodes():
     """The template was ported from a one-off report; ensure no run-specific
     captions leak into every generated dashboard."""
     result = _result()
-    html = build_dashboard(result, SYN, extract_chart_data(result))
+    html = build_dashboard(result, extract_chart_data(result))
     for stale in ["5/31 피크", "표본 2개", "(5 agents)", "2026-05-28 ~ 06-04",
                   "동시언급(15~18)", "(menu)</title>", "New York London"]:
         assert stale not in html, f"stale hardcode leaked: {stale}"
@@ -68,7 +67,7 @@ def test_build_dashboard_reports_error_count_and_channels():
                         query={"keywords": ["베이글"]}, items=items,
                         errors=[CollectError(source="google_trends", message="429")],
                         started_at=NOW, finished_at=NOW)
-    html = build_dashboard(result, SYN, extract_chart_data(result))
+    html = build_dashboard(result, extract_chart_data(result))
     assert '"errors": 1' in html
 
 
@@ -88,7 +87,7 @@ def test_radar_signals_and_rising_surface_but_stay_out_of_line_chart():
     result = ScanResult(run_id="r", store_id="nylb", lens="menu",
                         query={"keywords": ["베이글"], "radar_watchlist": ["탕후루"]},
                         items=items, started_at=NOW, finished_at=NOW)
-    html = build_dashboard(result, SYN, extract_chart_data(result))
+    html = build_dashboard(result, extract_chart_data(result))
     assert "트렌드 레이더" in html            # radar section rendered
     assert "탕후루" in html                    # watchlist signal surfaced
     assert "포비 베이글" in html               # auto-discovered rising surfaced
@@ -99,7 +98,7 @@ def test_radar_signals_and_rising_surface_but_stay_out_of_line_chart():
 
 def test_dashboard_has_interest_ranking_and_correct_brand():
     result = _result()
-    html = build_dashboard(result, SYN, extract_chart_data(result))
+    html = build_dashboard(result, extract_chart_data(result))
     assert "NEW YORK LOVE BAGEL" in html       # correct store name
     assert "New York London" not in html       # old wrong name gone
     assert "검색 관심도 랭킹" in html           # ranking section present
@@ -119,7 +118,7 @@ def test_competitor_data_embedded_when_present():
                   collected_at=NOW)]
     result = ScanResult(run_id="rc", store_id="nylb", lens="competitor",
                         query={"keywords": []}, items=items, started_at=NOW, finished_at=NOW)
-    html = build_dashboard(result, SYN, extract_chart_data(result))
+    html = build_dashboard(result, extract_chart_data(result))
     assert "포비(FOURB)" in html                 # competitor data embedded for the section
     comp = _embedded_data(html)["competitors"]
     assert comp[0]["price"] == 8910 and comp[0]["brand"] == "포비(FOURB)"
@@ -127,7 +126,7 @@ def test_competitor_data_embedded_when_present():
 
 def test_no_competitor_data_when_absent():
     result = _result()                       # menu result, no kurly items
-    html = build_dashboard(result, SYN, extract_chart_data(result))
+    html = build_dashboard(result, extract_chart_data(result))
     assert _embedded_data(html)["competitors"] == []   # section self-hides on empty
 
 
@@ -143,16 +142,15 @@ def test_price_positioning_comparison_embedded_when_present():
                    "url": "https://www.kurly.com/goods/5043336",
                    "match_key": "크림치즈", "basis": "리테일 200g"}]},
         items=items, started_at=NOW, finished_at=NOW)
-    syn = dict(SYN, price_positioning="크림치즈 베이글은 포비 리테일가보다 저렴해 가격 여력 있음.")
-    html = build_dashboard(result, syn, extract_chart_data(result))
+    html = build_dashboard(result, extract_chart_data(result))
     comp = _embedded_data(html)["comparisons"]
     assert len(comp) == 1
     assert comp[0]["position"] == "below"
     assert comp[0]["competitor_basis"] == "리테일 200g"
-    assert _embedded_data(html)["syn"]["price_positioning"].startswith("크림치즈")
+    assert "syn" not in _embedded_data(html)   # board is data-driven, no synthesis key
 
 
 def test_no_comparison_data_when_absent():
     result = _result()                       # menu result, no own/competitor
-    html = build_dashboard(result, SYN, extract_chart_data(result))
+    html = build_dashboard(result, extract_chart_data(result))
     assert _embedded_data(html)["comparisons"] == []
