@@ -6,17 +6,6 @@ from nylb.report.html import build_dashboard
 
 NOW = datetime(2026, 6, 4, tzinfo=timezone.utc)
 
-SYN = {
-    "headline": "베이글이 앵커",
-    "executive_summary": "요약 문장.",
-    "trend_verdicts": [{"keyword": "베이글", "stage": "스테디", "momentum": "up", "summary": "꾸준"}],
-    "top_insights": [{"title": "인사이트1", "detail": "내용"}],
-    "menu_opportunities": [], "pricing_benchmark": [], "content_ideas": [],
-    "action_plan": [{"priority": 1, "action": "행동", "rationale": "근거",
-                     "impact": "high", "effort": "low", "timeframe": "이번 주"}],
-    "risks": [], "data_gaps": [],
-}
-
 
 def _result():
     items = [Item(source="naver_datalab", lens="menu", type="search_term", title="베이글",

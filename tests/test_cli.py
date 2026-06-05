@@ -37,7 +37,6 @@ def test_scan_end_to_end(tmp_path, monkeypatch):
 
 
 def test_report_html_subcommand(tmp_path, monkeypatch):
-    import json
     from datetime import datetime, timezone
     from pathlib import Path
     from nylb.core.schema import Item, ScanResult

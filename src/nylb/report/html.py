@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from nylb.core.schema import ScanResult
-from nylb.report.board import build_board  # noqa: F401
+from nylb.report.board import build_board
 from nylb.report.chart_data import extract_chart_data  # noqa: F401  (re-export convenience)
 
 _TEMPLATE = r"""<!DOCTYPE html>
@@ -175,7 +175,7 @@ k.appendChild(kp); app.appendChild(k);
 function buildChart(){
   const W=760,H=340,L=48,R=24,T=24,B=44, pw=W-L-R, ph=H-T-B, ymax=DATA.chart.ymax;
   const dates=DATA.chart.dates, n=dates.length;
-  const X=i=>L+pw*(i/(n-1)), Y=v=>T+ph*(1-v/ymax);
+  const X=i=>n>1?L+pw*(i/(n-1)):L+pw/2, Y=v=>T+ph*(1-v/ymax);
   const NS="http://www.w3.org/2000/svg";
   const svg=document.createElementNS(NS,"svg");
   svg.setAttribute("viewBox","0 0 "+W+" "+H); svg.setAttribute("width","100%");
