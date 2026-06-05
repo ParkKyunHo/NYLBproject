@@ -5,6 +5,8 @@ def test_direction_thresholds():
     assert direction(2.0) == "up"
     assert direction(-2.0) == "down"
     assert direction(0.1) == "steady"
+    assert direction(0.5) == "steady"
+    assert direction(0.50001) == "up"
 
 
 def test_contextualize_computes_vs_baseline_and_rank():
@@ -27,6 +29,14 @@ def test_recent_drop_flag():
     assert cm["recent_drop"] is True
     assert cm["direction"] == "down"
     assert "단 최근 하락" in cm["caption"]
+
+
+def test_no_recent_drop_when_latest_at_or_above_recent_avg():
+    stats = {"latest": 90.0, "recent_avg": 80.0, "base_avg": 70.0,
+             "momentum": 10.0, "peak": 95.0, "daily": {}}
+    cm = contextualize("베이글", stats)
+    assert cm["recent_drop"] is False
+    assert "단 최근 하락" not in cm["caption"]
 
 
 def test_caption_has_no_prescriptive_wording():
