@@ -25,7 +25,7 @@ def _make_store(backend: str, store_key: str, settings: dict):
     return LocalJsonStore()
 
 
-def main(argv: list[str] | None = None) -> int:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="nylb")
     sub = parser.add_subparsers(dest="cmd", required=True)
     scan_p = sub.add_parser("scan", help="collect trend data for a lens")
@@ -36,10 +36,20 @@ def main(argv: list[str] | None = None) -> int:
     rh_p = sub.add_parser("report-html", help="render the analysis HTML dashboard")
     rh_p.add_argument("--run", required=True)
     rh_p.add_argument("--store", default="nylb")
-    args = parser.parse_args(argv)
+    dash_p = sub.add_parser("dashboard", help="local one-click board server")
+    dash_p.add_argument("--lens", default="menu")
+    dash_p.add_argument("--lenses-file", default="config/lenses.yaml")
+    dash_p.add_argument("--port", type=int, default=8765)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _build_parser().parse_args(argv)
 
     if args.cmd == "report-html":
         return _report_html(args)
+    if args.cmd == "dashboard":
+        return _dashboard(args)
 
     if args.cmd != "scan":
         return 1
@@ -71,4 +81,16 @@ def _report_html(args) -> int:
     html = build_dashboard(result, chart)
     path = write_text_report(html, args.run, out_dir="reports", suffix=".analysis.html")
     print(f"html={path}")
+    return 0
+
+
+def _dashboard(args) -> int:
+    from nylb.report.server import make_server
+    server = make_server(port=args.port, lens=args.lens)
+    host, port = server.server_address
+    print(f"dashboard http://127.0.0.1:{port}  ('스캔 실행' 버튼으로 수집)")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        server.shutdown()
     return 0
