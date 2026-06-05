@@ -15,6 +15,8 @@ def test_get_serves_board_with_run_button():
     _serve(server)
     host, port = server.server_address
     body = urllib.request.urlopen(f"http://127.0.0.1:{port}/").read().decode("utf-8")
+    body2 = urllib.request.urlopen(f"http://127.0.0.1:{port}/board").read().decode("utf-8")
+    assert "스캔 실행" in body2
     server.shutdown()
     assert "스캔 실행" in body          # button injected
     assert "fetch('/run'" in body

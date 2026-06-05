@@ -16,7 +16,7 @@ _BUTTON = (
     "box-shadow:0 6px 20px rgba(45,38,32,.3);cursor:pointer\">🔄 스캔 실행</button></div>"
     "<script>document.getElementById('nylb-run').onclick=function(){"
     "this.textContent='⏳ 수집 중...';this.disabled=true;"
-    "fetch('/run',{method:'POST'}).then(function(){location.reload();});};</script>"
+    "fetch('/run',{method:'POST'}).then(function(){location.reload();}).catch(function(){location.reload();});};</script>"
 )
 _PLACEHOLDER = ("<!DOCTYPE html><html lang=ko><body style=\"font-family:sans-serif;"
                 "padding:40px\"><h2>NYLB 의사결정 상황판</h2>"
@@ -33,7 +33,7 @@ def _with_button(html: str) -> str:
 def run_scan_and_render(lens: str = "menu", *, lenses_file: str = "config/lenses.yaml",
                         store_id: str = "nylb", collectors=None) -> str:
     """Run a local scan and return the rendered board HTML (no synthesis, no LLM)."""
-    from nylb.cli import build_run_id
+    from nylb.cli import build_run_id  # deferred import: cli imports nylb.report.*, avoid circular import
     now = datetime.now(timezone.utc)
     settings = load_settings()
     lenses = load_lenses(lenses_file)
@@ -48,6 +48,7 @@ def run_scan_and_render(lens: str = "menu", *, lenses_file: str = "config/lenses
 def make_server(host: str = "127.0.0.1", port: int = 8765, *,
                 lens: str = "menu", render_fn=None, **_) -> ThreadingHTTPServer:
     render = render_fn or (lambda: run_scan_and_render(lens))
+    # single shared board HTML; GIL makes dict get/set atomic — fine for single-user local use
     state = {"html": _PLACEHOLDER}
 
     class Handler(BaseHTTPRequestHandler):
