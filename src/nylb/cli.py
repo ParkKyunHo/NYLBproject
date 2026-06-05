@@ -86,7 +86,7 @@ def _report_html(args) -> int:
 
 def _dashboard(args) -> int:
     from nylb.report.server import make_server
-    server = make_server(port=args.port, lens=args.lens)
+    server = make_server(port=args.port, lens=args.lens, lenses_file=args.lenses_file)
     host, port = server.server_address
     print(f"dashboard http://127.0.0.1:{port}  ('스캔 실행' 버튼으로 수집)")
     try:

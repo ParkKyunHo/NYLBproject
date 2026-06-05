@@ -46,8 +46,9 @@ def run_scan_and_render(lens: str = "menu", *, lenses_file: str = "config/lenses
 
 
 def make_server(host: str = "127.0.0.1", port: int = 8765, *,
-                lens: str = "menu", render_fn=None, **_) -> ThreadingHTTPServer:
-    render = render_fn or (lambda: run_scan_and_render(lens))
+                lens: str = "menu", lenses_file: str = "config/lenses.yaml",
+                render_fn=None, **_) -> ThreadingHTTPServer:
+    render = render_fn or (lambda: run_scan_and_render(lens, lenses_file=lenses_file))
     # single shared board HTML; GIL makes dict get/set atomic — fine for single-user local use
     state = {"html": _PLACEHOLDER}
 
