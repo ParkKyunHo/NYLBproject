@@ -99,13 +99,17 @@ _TEMPLATE = r"""<!DOCTYPE html>
   .pill.on{background:#eaf6ef;color:#1f9d57;border-color:#bfe6cf}
   .pill.off{background:#f4f1ee;color:#9aa0a6}
   @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}.verdicts{grid-template-columns:1fr}.risk{grid-template-columns:1fr}}
+  .tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+  .tab{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:9px 18px;
+    font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit}
+  .tab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 </style>
 </head>
 <body>
 <div class="wrap" id="app"></div>
 
 <script>
-const DATA = __DATA__;
+const LENSES = __DATA__;
 function h(tag, attrs, kids){
   const e=document.createElement(tag);
   if(attrs) for(const k in attrs){ if(k==="class")e.className=attrs[k]; else if(k==="html")e.innerHTML=attrs[k]; else e.setAttribute(k,attrs[k]); }
@@ -114,7 +118,7 @@ function h(tag, attrs, kids){
 }
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 function sect(icon,title,sub){const s=h("section");s.appendChild(h("h2",null,[h("span",{class:"ic"},icon),title]));if(sub)s.appendChild(h("p",{class:"sub"},sub));return s;}
-const app=document.getElementById("app");
+function renderBoard(DATA, app){
 const M=DATA.meta, HL=DATA.headline;
 const ARROW={up:"▲",down:"▼",steady:"→"}, DCOL={up:"var(--up)",down:"var(--down)",steady:"var(--steady)"};
 document.title = "NYLB 의사결정 상황판 · "+M.collected+" ("+M.lens+")";
@@ -292,14 +296,34 @@ const src=h("div",{class:"src"});
 ft.appendChild(src);
 ft.appendChild(h("div",{style:"margin-top:12px"},"NYLB 의사결정 상황판 · 결정론 데이터 자동생성(LLM 없음) · 원본 data/raw/"+M.run_id+".json"));
 app.appendChild(ft);
+}
+const _root=document.getElementById("app");
+let _active=0;
+function _renderTabs(){
+  _root.innerHTML="";
+  if(LENSES.length>1){
+    const tabs=h("div",{class:"tabs"});
+    LENSES.forEach((L,i)=>{const b=h("button",{class:"tab"+(i===_active?" on":"")},(L.icon||"")+" "+L.label);
+      b.onclick=()=>{_active=i;_renderTabs();}; tabs.appendChild(b);});
+    _root.appendChild(tabs);
+  }
+  const board=h("div"); _root.appendChild(board);
+  renderBoard(LENSES[_active].board, board);
+}
+_renderTabs();
 </script>
 </body>
 </html>
 """
 
 
+def build_multi_dashboard(lenses: list[dict]) -> str:
+    """Render multiple lens boards into one tabbed HTML. Each lens = {key,label,icon,board}."""
+    return _TEMPLATE.replace("__DATA__", json.dumps(lenses, ensure_ascii=False))
+
+
 def build_dashboard(result: ScanResult, chart: dict, news_context=None) -> str:
-    """Render the deterministic decision-support board to self-contained HTML.
-    No `synthesis` — the board is 100% data-driven (build_board)."""
+    """Single-lens convenience — wraps one board as a 1-tab dashboard (tab bar hidden)."""
     board = build_board(result, chart, news_context=news_context)
-    return _TEMPLATE.replace("__DATA__", json.dumps(board, ensure_ascii=False))
+    return build_multi_dashboard([{"key": result.lens, "label": result.lens,
+                                   "icon": "🍽", "board": board}])

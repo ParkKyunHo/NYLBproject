@@ -21,7 +21,7 @@ def test_build_dashboard_returns_self_contained_html():
     result = _result()
     html = build_dashboard(result, extract_chart_data(result))
     assert html.startswith("<!DOCTYPE html>")
-    assert "const DATA" in html
+    assert "const LENSES" in html
     assert "__DATA__" not in html            # placeholder fully replaced
     assert "2026-06-04-menu-abc123" in html  # run id injected
     assert "<script" in html and "</script>" in html
@@ -80,7 +80,7 @@ def test_radar_signals_and_rising_surface_but_stay_out_of_line_chart():
     assert "트렌드 레이더" in html            # radar section rendered
     assert "탕후루" in html                    # watchlist signal surfaced
     assert "포비 베이글" in html               # auto-discovered rising surfaced
-    chart_series = json.loads(html.split("const DATA = ", 1)[1].split(";\n", 1)[0])["chart"]["series"]
+    chart_series = _embedded_data(html)["chart"]["series"]
     assert "베이글" in chart_series             # core keyword in the line chart
     assert "탕후루" not in chart_series         # watchlist term excluded from line chart
 
@@ -91,13 +91,14 @@ def test_dashboard_has_interest_ranking_and_correct_brand():
     assert "NEW YORK LOVE BAGEL" in html       # correct store name
     assert "New York London" not in html       # old wrong name gone
     assert "검색 관심도 랭킹" in html           # ranking section present
-    data = json.loads(html.split("const DATA = ", 1)[1].split(";\n", 1)[0])
+    data = _embedded_data(html)
     ranking = data["interest_ranking"]
     assert any(r["term"] == "베이글" and r["core"] for r in ranking)
 
 
 def _embedded_data(html):
-    return json.loads(html.split("const DATA = ", 1)[1].split(";\n", 1)[0])
+    lenses = json.loads(html.split("const LENSES = ", 1)[1].split(";\n", 1)[0])
+    return lenses[0]["board"]
 
 
 def test_competitor_data_embedded_when_present():
