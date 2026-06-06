@@ -38,6 +38,8 @@ def _build_parser() -> argparse.ArgumentParser:
     rh_p.add_argument("--store", default="nylb")
     dash_p = sub.add_parser("dashboard", help="local one-click board server")
     dash_p.add_argument("--lens", default="menu")
+    dash_p.add_argument("--lenses", default="menu,beverage",
+                        help="comma-separated lenses to show as tabs")
     dash_p.add_argument("--lenses-file", default="config/lenses.yaml")
     dash_p.add_argument("--port", type=int, default=8765)
     return parser
@@ -89,9 +91,10 @@ def _report_html(args) -> int:
 
 def _dashboard(args) -> int:
     from nylb.report.server import make_server
-    server = make_server(port=args.port, lens=args.lens, lenses_file=args.lenses_file)
+    lens_keys = [s.strip() for s in args.lenses.split(",") if s.strip()]
+    server = make_server(port=args.port, lens_keys=lens_keys, lenses_file=args.lenses_file)
     host, port = server.server_address
-    print(f"dashboard http://127.0.0.1:{port}  ('스캔 실행' 버튼으로 수집)")
+    print(f"dashboard http://127.0.0.1:{port}  ('스캔 실행' 버튼으로 수집 · 탭: {', '.join(lens_keys)})")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

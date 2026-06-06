@@ -48,10 +48,19 @@ def run_scan_and_render(lens: str = "menu", *, lenses_file: str = "config/lenses
     return build_dashboard(result, chart, news_context=news)
 
 
+def run_lenses_and_render(lens_keys: list[str], *, lenses_file: str = "config/lenses.yaml",
+                          store_id: str = "nylb", collectors=None) -> str:
+    from nylb.config import load_settings
+    from nylb.report.multi import build_lenses_dashboard
+    return build_lenses_dashboard(lens_keys, lenses_file=lenses_file, store_id=store_id,
+                                  settings=load_settings(), collectors=collectors)
+
+
 def make_server(host: str = "127.0.0.1", port: int = 8765, *,
-                lens: str = "menu", lenses_file: str = "config/lenses.yaml",
+                lens: str = "menu", lens_keys=None, lenses_file: str = "config/lenses.yaml",
                 render_fn=None, **_) -> ThreadingHTTPServer:
-    render = render_fn or (lambda: run_scan_and_render(lens, lenses_file=lenses_file))
+    keys = lens_keys or [lens]
+    render = render_fn or (lambda: run_lenses_and_render(keys, lenses_file=lenses_file))
     # single shared board HTML; GIL makes dict get/set atomic — fine for single-user local use
     state = {"html": _PLACEHOLDER}
 
