@@ -38,6 +38,11 @@ def _fetch(query: dict, settings: dict) -> dict:
                "Content-Type": "application/json"}
     out: list[dict] = []
     seen: set[str] = set()
+    # batch_size=1 (anchor + 1 term per request): pairwise batching minimises
+    # anchor-compression noise — DataLab normalises each request to max=100, so a
+    # dominant non-anchor term can compress the anchor toward zero and amplify
+    # factor=100/mean. Trade-off: more calls (~1 per term) but within DataLab's
+    # ~1000/day quota at single-tenant volume.
     batch_size = 1 if anchor else 5
     for group in _chunks(others, batch_size):
         names = ([anchor] + list(group)) if anchor else list(group)
@@ -59,8 +64,7 @@ def _fetch(query: dict, settings: dict) -> dict:
                 continue
             seen.add(name)
             out.append({"title": name,
-                        "series": _rescale(series, factor) if anchor else
-                                  [{"date": p["date"], "value": p["value"]} for p in series]})
+                        "series": _rescale(series, factor) if anchor else series})
     return {"results": out}
 
 
