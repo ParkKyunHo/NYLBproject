@@ -90,7 +90,7 @@ def test_dashboard_has_interest_ranking_and_correct_brand():
     html = build_dashboard(result, extract_chart_data(result))
     assert "NEW YORK LOVE BAGEL" in html       # correct store name
     assert "New York London" not in html       # old wrong name gone
-    assert "검색 관심도 랭킹" in html           # ranking section present
+    assert "제품 관심도" in html           # ranking section present
     data = _embedded_data(html)
     ranking = data["interest_ranking"]
     assert any(r["term"] == "베이글" and r["core"] for r in ranking)

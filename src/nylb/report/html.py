@@ -153,7 +153,7 @@ k.appendChild(kp); app.appendChild(k);
 
 /* INTEREST RANKING */
 (function(){const rk=DATA.interest_ranking||[]; if(!rk.length)return;
-  const sec=sect("🍞","검색 관심도 랭킹","사람들이 지금 어떤 베이커리·디저트를 검색하나 (0~100)");
+  const sec=sect("📊","제품 관심도","제품 검색 관심도 (제품 앵커=100 기준). 브랜드는 아래 별도 섹션.");
   const card=h("div",{class:"card"});
   const maxv=Math.max.apply(null, rk.map(x=>x.interest).concat([1]));
   rk.forEach(x=>{const row=h("div",{style:"display:grid;grid-template-columns:130px 1fr 40px;align-items:center;gap:10px;margin:7px 0"});
@@ -164,6 +164,21 @@ k.appendChild(kp); app.appendChild(k);
     row.appendChild(h("div",{style:"font-weight:800;font-size:13px;text-align:right"},String(Math.round(x.interest))));
     card.appendChild(row);});
   card.appendChild(h("div",{class:"note"},"★ = 우리 코어(파란 막대). 주황 = 레이더 인접 트렌드. 막대가 길수록 지금 검색 관심이 높음."));
+  sec.appendChild(card); app.appendChild(sec);})();
+
+/* BRAND RANKING */
+(function(){const br=DATA.brand_ranking||[]; if(!br.length)return;
+  const sec=sect("🏪","브랜드 관심도","경쟁 브랜드 검색 관심도 (1등 브랜드=100 기준 — 브랜드끼리만 비교)");
+  const card=h("div",{class:"card"});
+  const maxv=Math.max.apply(null, br.map(x=>x.interest).concat([1]));
+  br.forEach(x=>{const row=h("div",{style:"display:grid;grid-template-columns:130px 1fr 40px;align-items:center;gap:10px;margin:7px 0"});
+    row.appendChild(h("div",{style:"font-weight:700;font-size:13px"}, x.term));
+    const bar=h("div",{class:"bar",style:"height:15px;background:#f0e7da"});
+    bar.appendChild(h("i",{style:"width:"+(x.interest/maxv*100)+"%;background:var(--steady)"}));
+    row.appendChild(bar);
+    row.appendChild(h("div",{style:"font-weight:800;font-size:13px;text-align:right"},String(Math.round(x.interest))));
+    card.appendChild(row);});
+  card.appendChild(h("div",{class:"note"},"※ 브랜드(고유명사)는 제품(일반명사)과 검색 척도가 달라 분리. 1등 브랜드 대비 상대값."));
   sec.appendChild(card); app.appendChild(sec);})();
 
 /* CHART */
@@ -225,6 +240,25 @@ function buildChart(){
     card.appendChild(h("h3",null,[document.createTextNode(c.term),
       h("span",{class:"mom "+c.direction},ARROW[c.direction]+" "+(c.momentum>=0?"+":"")+c.momentum)]));
     card.appendChild(h("div",{class:"stage"},"검증됨 ✓ · "+(c.category||"radar")));
+    card.appendChild(h("p",null,c.caption));
+    const nx=(DATA.news_context||{})[c.term]||[];
+    if(nx.length){const nd=h("div",{style:"margin-top:7px;font-size:11.5px"});
+      nd.appendChild(h("div",{style:"color:var(--muted);font-weight:700"},"📰 관련 뉴스"));
+      nx.slice(0,3).forEach(nw=>{const a=h("a",{href:nw.link,target:"_blank",rel:"noopener noreferrer",
+        style:"display:block;color:var(--bagel);text-decoration:none;margin-top:2px"},
+        "· "+nw.title); nd.appendChild(a);});
+      card.appendChild(nd);}
+    g.appendChild(card);});
+  sec.appendChild(g); app.appendChild(sec);})();
+
+/* BRAND SIGNALS */
+(function(){const bs=DATA.brand_signals||[]; if(!bs.length)return;
+  const sec=sect("🏪","브랜드 신호","브랜드별 검색 모멘텀 (1등=100 기준) · 뉴스");
+  const g=h("div",{class:"grid verdicts"});
+  bs.forEach(c=>{const card=h("div",{class:"vc"});card.style.borderTopColor=DCOL[c.direction];
+    card.appendChild(h("h3",null,[document.createTextNode(c.term),
+      h("span",{class:"mom "+c.direction},ARROW[c.direction]+" "+(c.momentum>=0?"+":"")+c.momentum)]));
+    card.appendChild(h("div",{class:"stage"},"브랜드 · "+(c.rank||"-")+"위"));
     card.appendChild(h("p",null,c.caption));
     const nx=(DATA.news_context||{})[c.term]||[];
     if(nx.length){const nd=h("div",{style:"margin-top:7px;font-size:11.5px"});
