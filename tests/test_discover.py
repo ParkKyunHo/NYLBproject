@@ -26,6 +26,14 @@ def test_discovers_repeated_unknown_term_excludes_known_and_stopwords():
     assert "맛집" not in terms and "추천" not in terms
 
 
+def test_bigram_with_known_or_stopword_token_dropped():
+    items = [_yt("크로플 맛집 추천"), _yt("크로플 맛집 후기")]  # 크로플=known(below), 맛집=stop
+    q = {"keywords": ["크로플"], "radar_categories": {}, "synonyms": {}}
+    out = discover_candidates(_result(items, q), top_n=10)
+    terms = [c["term"] for c in out]
+    assert "크로플 맛집" not in terms and "맛집 추천" not in terms
+
+
 def test_single_occurrence_dropped_and_rising_merged():
     items = [_yt("말차 라떼")]
     rising = Item(source="google_trends", lens="menu", type="rising_query",

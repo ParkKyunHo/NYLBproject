@@ -15,7 +15,7 @@ nylb:
         베이글: [bagel]
         소금빵: ["소금 빵", "salt bread"]
         크로플: [croffle]
-      discover_stopwords: [맛집, 카페, 후기, 추천, 먹방, 신상]
+      discover_stopwords: [맛집, 카페, 후기, 추천, 먹방, 신상, 디저트, 빵집, 맛있는, 만드는, 만들기, 브이로그]
       # instagram_hashtags: [베이글맛집, 베이글]  # 인스타 보류 — Meta 토큰 발급 후 주석 해제
     content:
       keywords: [베이글, 베이커리]

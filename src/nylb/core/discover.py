@@ -51,6 +51,9 @@ def discover_candidates(result: ScanResult, top_n: int = 10) -> list[dict]:
         tokens = _TOKEN.findall(it.title)
         for g in _ngrams(tokens):
             k = g.lower()
+            toks = k.split()
+            if any(tok in known or tok in stop for tok in toks):
+                continue
             if k in known or k in stop or len(g) < 2 or g.isdigit():
                 continue
             freq[g] = freq.get(g, 0) + 1

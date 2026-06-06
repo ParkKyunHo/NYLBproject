@@ -38,22 +38,25 @@ def _fetch(query: dict, settings: dict) -> dict:
                "Content-Type": "application/json"}
     out: list[dict] = []
     seen: set[str] = set()
-    # batch_size=1 (anchor + 1 term per request): pairwise batching minimises
-    # anchor-compression noise — DataLab normalises each request to max=100, so a
-    # dominant non-anchor term can compress the anchor toward zero and amplify
-    # factor=100/mean. Trade-off: more calls (~1 per term) but within DataLab's
-    # ~1000/day quota at single-tenant volume.
-    batch_size = 1 if anchor else 5
+    errs: list[str] = []
+    # anchor + 4 others per request (5 = DataLab max). The anchor is in every
+    # batch so terms rescale to a common scale; per-batch try/except below keeps
+    # successful batches if one request fails (resilience). ~9 calls for a 30-term universe.
+    batch_size = 4 if anchor else 5
     for group in _chunks(others, batch_size):
         names = ([anchor] + list(group)) if anchor else list(group)
         body = {"startDate": start.isoformat(), "endDate": end.isoformat(),
                 "timeUnit": "date",
                 "keywordGroups": [{"groupName": t, "keywords": [t]} for t in names]}
-        r = httpx.post(_URL, json=body, headers=headers, timeout=20)
-        r.raise_for_status()
-        raw = {res.get("title", ""): [{"date": d["period"], "value": float(d["ratio"])}
-                                      for d in res.get("data", [])]
-               for res in r.json().get("results", [])}
+        try:
+            r = httpx.post(_URL, json=body, headers=headers, timeout=30)
+            r.raise_for_status()
+            raw = {res.get("title", ""): [{"date": d["period"], "value": float(d["ratio"])}
+                                          for d in res.get("data", [])]
+                   for res in r.json().get("results", [])}
+        except Exception as exc:
+            errs.append(f"batch {names}: {exc}")
+            continue
         factor = 1.0
         if anchor:
             avals = [p["value"] for p in raw.get(anchor, [])]
@@ -65,7 +68,7 @@ def _fetch(query: dict, settings: dict) -> dict:
             seen.add(name)
             out.append({"title": name,
                         "series": _rescale(series, factor) if anchor else series})
-    return {"results": out}
+    return {"results": out, "errors": errs}
 
 
 def _parse(payload: dict, query: dict, lens: str, collected_at: datetime) -> list[Item]:
@@ -85,6 +88,8 @@ def _parse(payload: dict, query: dict, lens: str, collected_at: datetime) -> lis
 def collect(query: dict, lens: str, *, settings: dict, collected_at: datetime) -> CollectResult:
     try:
         payload = _fetch(query, settings)
-        return CollectResult(items=_parse(payload, query, lens, collected_at))
     except Exception as exc:
         return CollectResult(errors=[CollectError(source=SOURCE, message=str(exc))])
+    items = _parse(payload, query, lens, collected_at)
+    errs = [CollectError(source=SOURCE, message=m) for m in payload.get("errors", [])]
+    return CollectResult(items=items, errors=errs)
