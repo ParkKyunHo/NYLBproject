@@ -3,7 +3,7 @@ nylb:
   lenses:
     menu:
       keywords: [베이글, 소금빵, 크로플]
-      radar_watchlist: [두바이초콜릿, 탕후루, 약과, 요거트아이스크림, 마라탕후루, 베이커리]
+      radar_watchlist: [두바이초콜릿, 탕후루, 약과, 요거트아이스크림, 베이커리]
       radar_seeds: [베이글, 디저트, 베이커리]
       sources: [youtube, naver, google_trends, naver_datalab]
       synonyms:
