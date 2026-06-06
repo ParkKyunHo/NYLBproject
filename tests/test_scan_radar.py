@@ -29,3 +29,13 @@ def test_legacy_flat_radar_still_works_and_anchor_defaults_to_first_keyword(tmp_
     assert r.query["radar_watchlist"] == ["탕후루"]
     assert r.query["radar_categories"] == {}
     assert r.query["anchor"] == "베이글"
+
+
+def test_discover_stopwords_threaded_into_query(tmp_path):
+    import os
+    os.chdir(tmp_path)
+    cfg = {"keywords": ["베이글"], "sources": [],
+           "discover_stopwords": ["디저트", "빵집"]}
+    r = run_scan("menu", store_id="nylb", lens_config=cfg, settings={},
+                 store=LocalJsonStore(), run_id="r2", collected_at=NOW, collectors={})
+    assert r.query["discover_stopwords"] == ["디저트", "빵집"]
