@@ -206,9 +206,9 @@ function buildChart(){
     const nx=(DATA.news_context||{})[c.term]||[];
     if(nx.length){const nd=h("div",{style:"margin-top:7px;font-size:11.5px"});
       nd.appendChild(h("div",{style:"color:var(--muted);font-weight:700"},"📰 관련 뉴스"));
-      nx.slice(0,3).forEach(n=>{const a=h("a",{href:n.link,target:"_blank",
+      nx.slice(0,3).forEach(nw=>{const a=h("a",{href:nw.link,target:"_blank",rel:"noopener noreferrer",
         style:"display:block;color:var(--bagel);text-decoration:none;margin-top:2px"},
-        "· "+n.title); nd.appendChild(a);});
+        "· "+nw.title); nd.appendChild(a);});
       card.appendChild(nd);}
     g.appendChild(card);});
   sec.appendChild(g); app.appendChild(sec);})();
@@ -225,9 +225,9 @@ function buildChart(){
     const nx=(DATA.news_context||{})[c.term]||[];
     if(nx.length){const nd=h("div",{style:"margin-top:7px;font-size:11.5px"});
       nd.appendChild(h("div",{style:"color:var(--muted);font-weight:700"},"📰 관련 뉴스"));
-      nx.slice(0,3).forEach(n=>{const a=h("a",{href:n.link,target:"_blank",
+      nx.slice(0,3).forEach(nw=>{const a=h("a",{href:nw.link,target:"_blank",rel:"noopener noreferrer",
         style:"display:block;color:var(--bagel);text-decoration:none;margin-top:2px"},
-        "· "+n.title); nd.appendChild(a);});
+        "· "+nw.title); nd.appendChild(a);});
       card.appendChild(nd);}
     g.appendChild(card);});
   sec.appendChild(g); app.appendChild(sec);})();
