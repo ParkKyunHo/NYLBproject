@@ -4,12 +4,12 @@ import nylb.collectors.naver_datalab as dl
 NOW = datetime(2026, 6, 4, tzinfo=timezone.utc)
 FIXTURE = {
     "results": [
-        {"title": "베이글", "keywords": ["베이글"],
-         "data": [{"period": "2026-05-30", "ratio": 40.0},
-                  {"period": "2026-06-04", "ratio": 70.0}]},
-        {"title": "두바이초콜릿", "keywords": ["두바이초콜릿"],
-         "data": [{"period": "2026-05-30", "ratio": 5.0},
-                  {"period": "2026-06-04", "ratio": 12.0}]},
+        {"title": "베이글",
+         "series": [{"date": "2026-05-30", "value": 40.0},
+                    {"date": "2026-06-04", "value": 70.0}]},
+        {"title": "두바이초콜릿",
+         "series": [{"date": "2026-05-30", "value": 5.0},
+                    {"date": "2026-06-04", "value": 12.0}]},
     ]
 }
 
