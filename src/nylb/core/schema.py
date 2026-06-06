@@ -12,7 +12,7 @@ Lens = Literal["menu", "content", "competitor", "review"]
 class Item(BaseModel):
     store_id: str = "nylb"            # 🏢 tenancy seam
     source: Source
-    lens: Lens
+    lens: str  # config-driven lens name (industry-agnostic), not a fixed enum
     type: str                        # e.g. video, blog, search_term, hashtag_media
     title: str
     url: str | None = None
