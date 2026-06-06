@@ -83,6 +83,7 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
         return cm
 
     brand_signals = [_brand_ctx(t, st) for t, st in brand_terms]
+    # brand_signals and brand_ranking both order by the same rescaled latest value.
     brand_signals.sort(key=lambda c: c["value"], reverse=True)
     for i, c in enumerate(brand_signals, 1):
         c["rank"] = i
@@ -131,7 +132,7 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
             "sources_status": sources_status,
         },
         "headline": {
-            "strongest_signal": ranked[0][0] if ranked else None,
+            "strongest_signal": next((t for t, _ in ranked if not _is_brand(t)), None),
             "biggest_mover": ({"term": biggest["term"],
                                "momentum": biggest["momentum"]} if biggest else None),
             "n_collected": len(result.items),

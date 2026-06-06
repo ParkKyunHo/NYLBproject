@@ -36,6 +36,12 @@ def test_products_and_brands_are_split_and_brands_rescaled():
     assert abs(bs["메가커피"]["value"] - 100) < 0.5
 
 
+def test_headline_strongest_is_a_product_not_a_brand():
+    b = build_board(_result(), extract_chart_data(_result()))
+    # 메가커피 (brand) has the highest raw interest, but the headline must name a PRODUCT
+    assert b["headline"]["strongest_signal"] in ("아메리카노", "콜드브루")
+
+
 def test_no_brands_yields_empty_brand_lists():
     items = [_dl("아메리카노", [100, 100, 100]), _dl("콜드브루", [50, 50, 50])]
     q = {"keywords": ["아메리카노"], "synonyms": {}, "anchor": "아메리카노",
