@@ -79,6 +79,7 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
                   "base_avg": st.get("base_avg", 0.0) * _bf,
                   "momentum": st.get("momentum", 0.0) * _bf}
         cm = contextualize(term, scaled, None, len(brand_terms))
+        cm["momentum"] = round(cm["momentum"], 1)
         cm["category"] = _BRAND_CAT
         return cm
 

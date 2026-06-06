@@ -58,3 +58,9 @@ def test_dashboard_renders_product_and_brand_sections():
     assert "제품 관심도" in html and "브랜드 관심도" in html
     assert "브랜드 신호" in html
     assert '"brand_ranking"' in html and '"brand_signals"' in html
+
+
+def test_brand_momentum_is_rounded_for_display():
+    b = build_board(_result(), extract_chart_data(_result()))
+    for c in b["brand_signals"]:
+        assert round(c["momentum"], 1) == c["momentum"]  # at most 1 decimal place
