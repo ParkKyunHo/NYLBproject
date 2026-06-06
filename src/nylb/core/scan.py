@@ -49,6 +49,21 @@ def run_scan(
         "instagram_accounts": lens_config.get("instagram_accounts", []),
     }
 
+    # Industry-agnostic: a categorized `radar` map (opaque category labels) is
+    # flattened to the collector-compatible flat watchlist + a term→category map.
+    radar_cfg = lens_config.get("radar")
+    radar_categories: dict[str, str] = {}
+    if isinstance(radar_cfg, dict):
+        flat: list[str] = []
+        for category, terms in radar_cfg.items():
+            for term in terms:
+                radar_categories[term] = category
+                flat.append(term)
+        query["radar_watchlist"] = flat
+    query["radar_categories"] = radar_categories
+    query["anchor"] = lens_config.get("anchor") or (
+        (lens_config.get("keywords") or [None])[0])
+
     items = []
     errors = []
     for source in sources:
