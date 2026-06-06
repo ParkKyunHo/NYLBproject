@@ -101,4 +101,5 @@ def extract_chart_data(result: ScanResult) -> dict:
         "comparisons": comparisons,
         "keywords": keywords,
         "radar_watchlist": list(result.query.get("radar_watchlist", [])),
+        "radar_categories": dict(result.query.get("radar_categories", {})),
     }

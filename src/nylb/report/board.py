@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from nylb.core.context import contextualize
+from nylb.core.discover import discover_candidates
 from nylb.core.schema import ScanResult
 from nylb.core.verify import verify_rising
 
@@ -35,7 +36,7 @@ def build_chart_block(chart: dict) -> dict:
     return {"dates": dates, "series": series, "ymax": ymax, "source": source}
 
 
-def build_board(result: ScanResult, chart: dict) -> dict:
+def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
     """Assemble the deterministic decision-support board. No verdicts."""
     core = list(chart.get("keywords", []))
     core_set = set(core)
@@ -47,10 +48,15 @@ def build_board(result: ScanResult, chart: dict) -> dict:
     rank_of = {term: i + 1 for i, (term, _) in enumerate(ranked)}
     total = len(ranked)
 
-    core_signals = [contextualize(t, tstats[t], rank_of.get(t), total)
-                    for t in core if t in tstats]
-    radar = [contextualize(t, st, rank_of.get(t), total)
-             for t, st in ranked if t not in core_set]
+    cats = chart.get("radar_categories", {}) or result.query.get("radar_categories", {})
+
+    def _ctx(term, st):
+        cm = contextualize(term, st, rank_of.get(term), total)
+        cm["category"] = cats.get(term, "core" if term in core_set else "radar")
+        return cm
+
+    core_signals = [_ctx(t, tstats[t]) for t in core if t in tstats]
+    radar = [_ctx(t, st) for t, st in ranked if t not in core_set]
 
     content_items = [it for it in result.items if it.source in ("youtube", "naver")]
     datalab_terms = set(chart["trends"].get("naver_datalab", {}).keys())
@@ -114,4 +120,6 @@ def build_board(result: ScanResult, chart: dict) -> dict:
         "competitors": chart.get("competitors", []),
         "comparisons": chart.get("comparisons", []),
         "data_trust": data_trust,
+        "candidates": discover_candidates(result, top_n=10),
+        "news_context": news_context or {},
     }
