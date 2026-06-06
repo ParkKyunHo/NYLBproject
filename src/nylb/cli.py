@@ -37,7 +37,6 @@ def _build_parser() -> argparse.ArgumentParser:
     rh_p.add_argument("--run", required=True)
     rh_p.add_argument("--store", default="nylb")
     dash_p = sub.add_parser("dashboard", help="local one-click board server")
-    dash_p.add_argument("--lens", default="menu")
     dash_p.add_argument("--lenses", default="menu,beverage",
                         help="comma-separated lenses to show as tabs")
     dash_p.add_argument("--lenses-file", default="config/lenses.yaml")

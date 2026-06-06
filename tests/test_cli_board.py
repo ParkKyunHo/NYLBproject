@@ -23,5 +23,5 @@ def test_report_html_needs_no_synthesis(tmp_path, monkeypatch, capsys):
 
 
 def test_dashboard_subcommand_is_registered():
-    ns = _build_parser().parse_args(["dashboard", "--lens", "menu", "--port", "9999"])
+    ns = _build_parser().parse_args(["dashboard", "--lenses", "menu", "--port", "9999"])
     assert ns.cmd == "dashboard" and ns.port == 9999

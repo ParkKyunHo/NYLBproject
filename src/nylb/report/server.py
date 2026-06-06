@@ -1,13 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-
-from nylb.config import get_lens_config, load_lenses, load_settings
-from nylb.core.scan import run_scan
-from nylb.core.store import LocalJsonStore
-from nylb.report.chart_data import extract_chart_data
-from nylb.report.html import build_dashboard
 
 _BUTTON = (
     "<div style=\"position:fixed;right:20px;bottom:20px;z-index:9999\">"
@@ -28,24 +21,6 @@ def _with_button(html: str) -> str:
     if "</body>" in html:
         return html.replace("</body>", _BUTTON + "</body>", 1)
     return html + _BUTTON
-
-
-def run_scan_and_render(lens: str = "menu", *, lenses_file: str = "config/lenses.yaml",
-                        store_id: str = "nylb", collectors=None) -> str:
-    """Run a local scan and return the rendered board HTML (no synthesis, no LLM)."""
-    from nylb.cli import build_run_id  # deferred import: cli imports nylb.report.*, avoid circular import
-    now = datetime.now(timezone.utc)
-    settings = load_settings()
-    lenses = load_lenses(lenses_file)
-    lens_config = get_lens_config(lenses, store_id, lens)
-    run_id = build_run_id(lens, now)
-    result = run_scan(lens, store_id=store_id, lens_config=lens_config,
-                      settings=settings, store=LocalJsonStore(), run_id=run_id,
-                      collected_at=now, collectors=collectors)
-    chart = extract_chart_data(result)
-    from nylb.report.news import gather_riser_news
-    news = gather_riser_news(result, chart, settings)
-    return build_dashboard(result, chart, news_context=news)
 
 
 def run_lenses_and_render(lens_keys: list[str], *, lenses_file: str = "config/lenses.yaml",
