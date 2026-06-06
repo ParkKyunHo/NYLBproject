@@ -76,9 +76,12 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _report_html(args) -> int:
+    from nylb.config import load_settings
+    from nylb.report.news import gather_riser_news
     result = LocalJsonStore().load(args.run)
     chart = extract_chart_data(result)
-    html = build_dashboard(result, chart)
+    news = gather_riser_news(result, chart, load_settings())
+    html = build_dashboard(result, chart, news_context=news)
     path = write_text_report(html, args.run, out_dir="reports", suffix=".analysis.html")
     print(f"html={path}")
     return 0

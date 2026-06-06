@@ -64,3 +64,14 @@ def test_gather_riser_news_selects_positive_momentum_terms(monkeypatch):
 def test_board_candidates_is_a_list():
     board = build_board(_result(), extract_chart_data(_result()))
     assert isinstance(board["candidates"], list)
+
+
+def test_dashboard_renders_candidates_and_news():
+    from nylb.report.html import build_dashboard
+    r = _result()
+    chart = extract_chart_data(r)
+    news = {"성심당": [{"title": "성심당 신메뉴", "link": "http://n", "date": "x"}]}
+    html = build_dashboard(r, chart, news_context=news)
+    assert '"candidates"' in html and '"news_context"' in html
+    assert "발굴 후보" in html
+    assert "관련 뉴스" in html

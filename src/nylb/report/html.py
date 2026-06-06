@@ -202,7 +202,15 @@ function buildChart(){
     card.appendChild(h("h3",null,[document.createTextNode(c.term),
       h("span",{class:"mom "+c.direction},ARROW[c.direction]+" "+(c.momentum>=0?"+":"")+c.momentum)]));
     card.appendChild(h("div",{class:"stage"},"검증됨 ✓ · 피크 "+c.peak));
-    card.appendChild(h("p",null,c.caption)); g.appendChild(card);});
+    card.appendChild(h("p",null,c.caption));
+    const nx=(DATA.news_context||{})[c.term]||[];
+    if(nx.length){const nd=h("div",{style:"margin-top:7px;font-size:11.5px"});
+      nd.appendChild(h("div",{style:"color:var(--muted);font-weight:700"},"📰 관련 뉴스"));
+      nx.slice(0,3).forEach(n=>{const a=h("a",{href:n.link,target:"_blank",
+        style:"display:block;color:var(--bagel);text-decoration:none;margin-top:2px"},
+        "· "+n.title); nd.appendChild(a);});
+      card.appendChild(nd);}
+    g.appendChild(card);});
   sec.appendChild(g); app.appendChild(sec);})();
 
 /* RADAR (verified only) */
@@ -212,8 +220,16 @@ function buildChart(){
   rd.forEach(c=>{const card=h("div",{class:"vc"});card.style.borderTopColor=DCOL[c.direction];
     card.appendChild(h("h3",null,[document.createTextNode(c.term),
       h("span",{class:"mom "+c.direction},ARROW[c.direction]+" "+(c.momentum>=0?"+":"")+c.momentum)]));
-    card.appendChild(h("div",{class:"stage"},"검증됨 ✓"));
-    card.appendChild(h("p",null,c.caption)); g.appendChild(card);});
+    card.appendChild(h("div",{class:"stage"},"검증됨 ✓ · "+(c.category||"radar")));
+    card.appendChild(h("p",null,c.caption));
+    const nx=(DATA.news_context||{})[c.term]||[];
+    if(nx.length){const nd=h("div",{style:"margin-top:7px;font-size:11.5px"});
+      nd.appendChild(h("div",{style:"color:var(--muted);font-weight:700"},"📰 관련 뉴스"));
+      nx.slice(0,3).forEach(n=>{const a=h("a",{href:n.link,target:"_blank",
+        style:"display:block;color:var(--bagel);text-decoration:none;margin-top:2px"},
+        "· "+n.title); nd.appendChild(a);});
+      card.appendChild(nd);}
+    g.appendChild(card);});
   sec.appendChild(g); app.appendChild(sec);})();
 
 /* UNVERIFIED RAW — quarantine (비키 베이글 lands here) */
@@ -253,6 +269,15 @@ function buildChart(){
     h("td",{style:"color:#9b8f80;text-decoration:line-through"},c.base_price!=null?Math.round(c.base_price).toLocaleString()+"원":"")])));
   card.appendChild(tb); sec.appendChild(card); app.appendChild(sec);})();
 
+/* DISCOVERY CANDIDATES */
+(function(){const cs=DATA.candidates||[]; if(!cs.length)return;
+  const sec=sect("🔎","발굴 후보 (미편입)","콘텐츠·급상승어에서 자동 발굴된 후보 — 검증·편입 판단은 사장님 몫");
+  const card=h("div",{class:"card"});const ul=h("ul",{class:"gaps"});
+  cs.forEach(c=>ul.appendChild(h("li",null,
+    c.term+"  ·  빈도 "+c.freq+(c.from_rising?"  ·  🔥급상승":"")+
+    (c.sample_title?("  ·  예: "+c.sample_title.slice(0,30)):""))));
+  card.appendChild(ul); sec.appendChild(card); app.appendChild(sec);})();
+
 /* DATA TRUST */
 (function(){const dt=DATA.data_trust||[]; if(!dt.length)return;
   const sec=sect("🧪","데이터 신뢰도 & 한계","각 수치를 얼마나 믿을지 — 판단 보정용");
@@ -273,8 +298,8 @@ app.appendChild(ft);
 """
 
 
-def build_dashboard(result: ScanResult, chart: dict) -> str:
+def build_dashboard(result: ScanResult, chart: dict, news_context=None) -> str:
     """Render the deterministic decision-support board to self-contained HTML.
     No `synthesis` — the board is 100% data-driven (build_board)."""
-    board = build_board(result, chart)
+    board = build_board(result, chart, news_context=news_context)
     return _TEMPLATE.replace("__DATA__", json.dumps(board, ensure_ascii=False))

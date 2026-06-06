@@ -42,7 +42,10 @@ def run_scan_and_render(lens: str = "menu", *, lenses_file: str = "config/lenses
     result = run_scan(lens, store_id=store_id, lens_config=lens_config,
                       settings=settings, store=LocalJsonStore(), run_id=run_id,
                       collected_at=now, collectors=collectors)
-    return build_dashboard(result, extract_chart_data(result))
+    chart = extract_chart_data(result)
+    from nylb.report.news import gather_riser_news
+    news = gather_riser_news(result, chart, settings)
+    return build_dashboard(result, chart, news_context=news)
 
 
 def make_server(host: str = "127.0.0.1", port: int = 8765, *,
