@@ -2,6 +2,8 @@ nylb:
   industry: bakery
   lenses:
     menu:
+      label: 메뉴
+      icon: "🥯"
       keywords: [베이글, 소금빵, 크로플, 휘낭시에, 프레첼]
       anchor: 베이글
       radar:
@@ -17,6 +19,23 @@ nylb:
         크로플: [croffle]
       discover_stopwords: [맛집, 카페, 후기, 추천, 먹방, 신상, 디저트, 빵집, 맛있는, 만드는, 만들기, 브이로그]
       # instagram_hashtags: [베이글맛집, 베이글]  # 인스타 보류 — Meta 토큰 발급 후 주석 해제
+    beverage:
+      label: 음료
+      icon: "🥤"
+      keywords: [아메리카노, 카페라떼, 바닐라라떼, 콜드브루, 말차라떼]
+      anchor: 아메리카노
+      radar:
+        coffee:    [아인슈페너, 플랫화이트, 디카페인, 카푸치노, 에어로카노]
+        noncoffee: [밀크티, 흑당밀크티, 자몽에이드, 레몬에이드, 청귤에이드, 얼그레이]
+        blended:   [딸기스무디, 망고스무디, 요거트스무디, 프라푸치노]
+        trend:     [우베라떼, 흑임자라떼, 쑥라떼, 콤부차, 제로음료]
+        brands:    [스타벅스, 메가커피, 컴포즈커피, 빽다방, 투썸플레이스, 이디야, 더벤티]
+      radar_seeds: [커피, 음료, 카페]
+      sources: [youtube, naver, google_trends, naver_datalab]
+      synonyms:
+        아메리카노: [아아, americano]
+        카페라떼: [라떼, latte]
+      discover_stopwords: [맛집, 카페, 후기, 추천, 먹방, 신상, 레시피, 만드는]
     content:
       keywords: [베이글, 베이커리]
       sources: [youtube]
