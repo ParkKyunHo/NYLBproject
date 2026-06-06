@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from pathlib import Path
 
 from nylb.config import get_lens_config, load_lenses
 from nylb.core.scan import run_scan
@@ -11,15 +10,11 @@ from nylb.report.chart_data import extract_chart_data
 from nylb.report.html import build_multi_dashboard
 from nylb.report.news import gather_riser_news
 
-# Repo root = four levels up from src/nylb/report/multi.py
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_DEFAULT_LENSES = str(_REPO_ROOT / "config" / "lenses.yaml")
-
 
 def build_lenses_dashboard(
     lens_keys: list[str],
     *,
-    lenses_file: str | None = None,
+    lenses_file: str = "config/lenses.yaml",
     store_id: str = "nylb",
     settings: dict,
     collectors=None,
@@ -28,8 +23,7 @@ def build_lenses_dashboard(
     Lens label/icon come from config (industry-agnostic)."""
     from nylb.cli import build_run_id
 
-    resolved = lenses_file if lenses_file is not None else _DEFAULT_LENSES
-    lenses_cfg = load_lenses(resolved)
+    lenses_cfg = load_lenses(lenses_file)
     now = datetime.now(timezone.utc)
     out: list[dict] = []
     for key in lens_keys:

@@ -8,9 +8,8 @@ from nylb.core.schema import Item, ScanResult
 NOW = datetime(2026, 6, 6, tzinfo=timezone.utc)
 
 
-def test_scan_flatten_works_for_a_chicken_shop(tmp_path):
-    import os
-    os.chdir(tmp_path)
+def test_scan_flatten_works_for_a_chicken_shop(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     cfg = {"keywords": ["치킨", "교촌"], "anchor": "치킨", "sources": [],
            "radar": {"flavor": ["양념", "마라"], "brands": ["bbq", "굽네"]}}
     r = run_scan("menu", store_id="s", lens_config=cfg, settings={},
