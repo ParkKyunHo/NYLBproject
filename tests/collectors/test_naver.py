@@ -39,8 +39,8 @@ def test_fetch_uses_relevance_sort(monkeypatch):
         return _Resp()
 
     monkeypatch.setattr(nv.httpx, "get", fake_get)
-    nv._fetch({"keywords": ["베이글"]},
-              {"naver_client_id": "a", "naver_client_secret": "b"})
+    # _fetch was replaced by _fetch_one(keyword, settings) in per-keyword refactor
+    nv._fetch_one("베이글", {"naver_client_id": "a", "naver_client_secret": "b"})
     assert captured.get("sort") == "sim"
 
 
@@ -55,9 +55,11 @@ def test_parse_postdate_invalid_values_do_not_crash():
 
 
 def test_collect_handles_error(monkeypatch):
-    def boom(query, settings):
+    # _fetch was replaced by _fetch_one(keyword, settings) in per-keyword refactor;
+    # all keywords failing now surfaces errors list (total-failure path)
+    def boom(keyword, settings):
         raise RuntimeError("401 auth")
-    monkeypatch.setattr(nv, "_fetch", boom)
+    monkeypatch.setattr(nv, "_fetch_one", boom)
     res = nv.collect({"keywords": ["베이글"]}, "menu", settings={}, collected_at=NOW)
     assert res.items == []
     assert res.errors[0].source == "naver"

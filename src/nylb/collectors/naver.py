@@ -11,14 +11,13 @@ SOURCE = "naver"
 _SEARCH_URL = "https://openapi.naver.com/v1/search/blog.json"
 
 
-def _fetch(query: dict, settings: dict) -> dict:
+def _fetch_one(keyword: str, settings: dict) -> dict:
     cid = settings.get("naver_client_id")
     csec = settings.get("naver_client_secret")
     if not (cid and csec):
         raise RuntimeError("NAVER credentials missing")
-    keywords = " ".join(query.get("keywords", [])) or "베이글"
     headers = {"X-Naver-Client-Id": cid, "X-Naver-Client-Secret": csec}
-    params = {"query": keywords, "display": 20, "sort": "sim"}
+    params = {"query": keyword, "display": 20, "sort": "sim"}
     r = httpx.get(_SEARCH_URL, params=params, headers=headers, timeout=20)
     r.raise_for_status()
     return r.json()
@@ -47,8 +46,23 @@ def _parse(payload: dict, query: dict, lens: str, collected_at: datetime) -> lis
 
 
 def collect(query: dict, lens: str, *, settings: dict, collected_at: datetime) -> CollectResult:
-    try:
-        payload = _fetch(query, settings)
-        return CollectResult(items=_parse(payload, query, lens, collected_at))
-    except Exception as exc:
-        return CollectResult(errors=[CollectError(source=SOURCE, message=str(exc))])
+    keywords = list(query.get("keywords", [])) or ["베이글"]
+    items: list[Item] = []
+    errors: list[CollectError] = []
+    seen: set[str] = set()
+    for kw in keywords:
+        try:
+            payload = _fetch_one(kw, settings)
+        except Exception as exc:
+            errors.append(CollectError(source=SOURCE, message=f"{kw}: {exc}"))
+            continue
+        for it in _parse(payload, query, lens, collected_at):
+            key = it.url or it.title
+            if key in seen:
+                continue
+            seen.add(key)
+            items.append(it)
+    # total failure (every keyword errored) surfaces; partial is tolerated
+    if errors and not items and len(errors) == len(keywords):
+        return CollectResult(errors=errors)
+    return CollectResult(items=items)
