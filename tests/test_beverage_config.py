@@ -5,7 +5,7 @@ def test_beverage_lens_loads_with_anchor_and_categories():
     lenses = load_lenses("config/lenses.yaml")
     c = get_lens_config(lenses, "nylb", "beverage")
     assert c["anchor"] == "아메리카노"
-    assert set(c["radar"].keys()) == {"coffee", "noncoffee", "blended", "trend", "brands"}
+    assert set(c["radar"].keys()) == {"coffee", "tea", "blended", "trend", "brands"}
     assert "스타벅스" in c["radar"]["brands"]
 
 
