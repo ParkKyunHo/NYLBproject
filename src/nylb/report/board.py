@@ -9,14 +9,14 @@ _COLORS = {"소금빵": "var(--salt)", "베이글": "var(--bagel)", "크로플":
 _PALETTE = ["#7c5cff", "#2f9e5b", "#d24b4b", "#e2a32f", "#1f9d57"]
 
 
-def _trend_source(chart: dict) -> str:
+def trend_source(chart: dict) -> str:
     return "naver_datalab" if chart["trends"].get("naver_datalab") else "google_trends"
 
 
 def build_chart_block(chart: dict) -> dict:
     """Render-ready line-chart block (dates/series/ymax) for the core keywords.
     Moved verbatim from the old html._build_chart so html.py stays render-only."""
-    source = _trend_source(chart)
+    source = trend_source(chart)
     tsrc = chart["trends"].get(source, {})
     core = set(chart.get("keywords", []))
     items = [(kw, info) for kw, info in tsrc.items() if not core or kw in core]
@@ -40,7 +40,7 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
     """Assemble the deterministic decision-support board. No verdicts."""
     core = list(chart.get("keywords", []))
     core_set = set(core)
-    source = _trend_source(chart)
+    source = trend_source(chart)
     tstats = chart["trends"].get(source, {})
 
     ranked = sorted(tstats.items(),
@@ -48,6 +48,7 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
     rank_of = {term: i + 1 for i, (term, _) in enumerate(ranked)}
     total = len(ranked)
 
+    # chart_data always populates radar_categories; query fallback covers hand-built chart dicts.
     cats = chart.get("radar_categories", {}) or result.query.get("radar_categories", {})
 
     def _ctx(term, st):

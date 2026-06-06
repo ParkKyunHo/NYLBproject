@@ -45,3 +45,22 @@ def test_build_board_backward_compatible_two_args():
     board = build_board(r, extract_chart_data(r))  # no news_context
     assert board["news_context"] == {}
     assert "candidates" in board
+
+
+def test_gather_riser_news_selects_positive_momentum_terms(monkeypatch):
+    from nylb.report import news as news_mod
+    captured = {}
+    def fake_collect(terms, *, settings, max_per_term=3):
+        captured["terms"] = terms
+        return {t: [{"title": t + " 기사", "link": "http://x", "date": ""}] for t in terms}
+    monkeypatch.setattr(news_mod.naver_news, "collect", fake_collect)
+    chart = {"trends": {"naver_datalab": {
+        "라이저": {"momentum": 12.0}, "하락": {"momentum": -5.0}, "보합": {"momentum": 0.0}}}}
+    out = news_mod.gather_riser_news(result=None, chart=chart, settings={"naver_client_id": "x"})
+    assert captured["terms"] == ["라이저"]          # only positive momentum, sorted desc
+    assert out["라이저"][0]["title"] == "라이저 기사"
+
+
+def test_board_candidates_is_a_list():
+    board = build_board(_result(), extract_chart_data(_result()))
+    assert isinstance(board["candidates"], list)
