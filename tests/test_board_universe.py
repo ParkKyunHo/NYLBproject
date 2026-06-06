@@ -34,8 +34,10 @@ def test_board_has_category_candidates_and_news_context():
     chart = extract_chart_data(r)
     news = {"성심당": [{"title": "성심당 신메뉴", "link": "http://n", "date": "x"}]}
     board = build_board(r, chart, news_context=news)
-    sansim = next(c for c in board["radar"] if c["term"] == "성심당")
+    # brands are now in brand_signals, not radar
+    sansim = next(c for c in board["brand_signals"] if c["term"] == "성심당")
     assert sansim["category"] == "brands"
+    assert "성심당" not in {c["term"] for c in board["radar"]}
     assert any("두바이" in c["term"] or "쫀득" in c["term"] for c in board["candidates"])
     assert board["news_context"]["성심당"][0]["title"] == "성심당 신메뉴"
 

@@ -7,6 +7,7 @@ from nylb.core.verify import verify_rising
 
 _COLORS = {"소금빵": "var(--salt)", "베이글": "var(--bagel)", "크로플": "var(--croffle)"}
 _PALETTE = ["#7c5cff", "#2f9e5b", "#d24b4b", "#e2a32f", "#1f9d57"]
+_BRAND_CAT = "brands"  # the single config↔engine coupling: the radar category treated as brands
 
 
 def trend_source(chart: dict) -> str:
@@ -57,7 +58,37 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
         return cm
 
     core_signals = [_ctx(t, tstats[t]) for t in core if t in tstats]
-    radar = [_ctx(t, st) for t, st in ranked if t not in core_set]
+
+    def _is_brand(term):
+        return cats.get(term) == _BRAND_CAT
+
+    radar = [_ctx(t, st) for t, st in ranked
+             if t not in core_set and not _is_brand(t)]
+
+    # Brands: rescale to "% of the top brand". All terms are already normalized to the
+    # PRODUCT anchor, so the anchor cancels in brand-vs-brand ratios — no extra query.
+    brand_terms = [(t, st) for t, st in ranked if _is_brand(t)]
+    _max_brand = max((st.get("latest", 0.0) for _, st in brand_terms), default=0.0)
+    _bf = (100.0 / _max_brand) if _max_brand > 0 else 1.0
+
+    def _brand_ctx(term, st):
+        scaled = {**st,
+                  "latest": st.get("latest", 0.0) * _bf,
+                  "peak": st.get("peak", 0.0) * _bf,
+                  "recent_avg": st.get("recent_avg", 0.0) * _bf,
+                  "base_avg": st.get("base_avg", 0.0) * _bf,
+                  "momentum": st.get("momentum", 0.0) * _bf}
+        cm = contextualize(term, scaled, None, len(brand_terms))
+        cm["category"] = _BRAND_CAT
+        return cm
+
+    brand_signals = [_brand_ctx(t, st) for t, st in brand_terms]
+    brand_signals.sort(key=lambda c: c["value"], reverse=True)
+    for i, c in enumerate(brand_signals, 1):
+        c["rank"] = i
+    brand_ranking = [{"term": t, "interest": round(st.get("latest", 0.0) * _bf, 1)}
+                     for t, st in brand_terms]
+    brand_ranking.sort(key=lambda x: x["interest"], reverse=True)
 
     content_items = [it for it in result.items if it.source in ("youtube", "naver")]
     datalab_terms = set(chart["trends"].get("naver_datalab", {}).keys())
@@ -109,10 +140,12 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
         },
         "core_signals": core_signals,
         "radar": radar,
+        "brand_ranking": brand_ranking,
+        "brand_signals": brand_signals,
         "unverified_raw": verdict["unverified"],
         "interest_ranking": [
-            {"term": t, "interest": round(st.get("latest", 0.0), 1),
-             "core": t in core_set} for t, st in ranked
+            {"term": t, "interest": round(st.get("latest", 0.0), 1), "core": t in core_set}
+            for t, st in ranked if not _is_brand(t)
         ],
         "chart": {**build_chart_block(chart),
                   "note": f"{label} 기준 검색 관심도 추이. 상대 정규화(0~100) — "
