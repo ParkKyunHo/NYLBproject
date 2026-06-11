@@ -52,7 +52,7 @@ def test_build_board_backward_compatible_two_args():
 def test_gather_riser_news_selects_positive_momentum_terms(monkeypatch):
     from nylb.report import news as news_mod
     captured = {}
-    def fake_collect(terms, *, settings, max_per_term=3):
+    def fake_collect(terms, *, settings, max_per_term=3, context_terms=None):
         captured["terms"] = terms
         return {t: [{"title": t + " 기사", "link": "http://x", "date": ""}] for t in terms}
     monkeypatch.setattr(news_mod.naver_news, "collect", fake_collect)

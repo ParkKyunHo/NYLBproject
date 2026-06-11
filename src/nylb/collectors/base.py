@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import html
 import re
 from datetime import datetime
 
 
 def strip_html(text: str | None) -> str:
-    return re.sub(r"<[^>]+>", "", text or "").strip()
+    """Drop tags AND decode entities (&quot; etc.) — sources mix both."""
+    return html.unescape(re.sub(r"<[^>]+>", "", text or "")).strip()
 
 
 def parse_iso(value: str | None) -> datetime | None:

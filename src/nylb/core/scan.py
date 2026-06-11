@@ -48,6 +48,8 @@ def run_scan(
         "instagram_hashtags": lens_config.get("instagram_hashtags", []),
         "instagram_accounts": lens_config.get("instagram_accounts", []),
         "discover_stopwords": lens_config.get("discover_stopwords", []),
+        "news_context_terms": lens_config.get("news_context_terms", []),
+        "pairing_categories": lens_config.get("pairing_categories", []),
     }
 
     # Industry-agnostic: a categorized `radar` map (opaque category labels) is

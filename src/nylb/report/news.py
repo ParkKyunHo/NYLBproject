@@ -14,4 +14,6 @@ def gather_riser_news(result, chart, settings: dict, top_n: int = 5) -> dict:
     terms = [t for t, st in risers if st.get("momentum", 0.0) > 0][:top_n]
     if not terms:
         return {}
-    return naver_news.collect(terms, settings=settings, max_per_term=3)
+    ctx = (getattr(result, "query", None) or {}).get("news_context_terms") or None
+    return naver_news.collect(terms, settings=settings, max_per_term=3,
+                              context_terms=ctx)
