@@ -200,10 +200,16 @@ _TEMPLATE = r"""<!DOCTYPE html>
   }
   @media(max-width:620px){.g3,.g2{grid-template-columns:1fr}.opp{grid-template-columns:1fr}}
   @media print{
-    .topnav,#nylb-run{display:none!important}
-    body{background:#fff}
+    @page{size:A4;margin:9mm}
+    .topnav,#nylb-run,#nylb-actions{display:none!important}
+    body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .wrap{max-width:100%;padding:0 2mm}
     section{animation:none;opacity:1}
     .mast{box-shadow:none}
+    .card,.opp,.mvc,.cal-row,.quar{break-inside:avoid}
+    .shead{break-after:avoid}
+    .opp:hover,.mvc:hover{transform:none;box-shadow:none}
+    .ctip{display:none}
   }
 </style>
 </head>
@@ -419,7 +425,7 @@ app.appendChild(mast);
     const card=h("div",{class:"mvc"});
     card.appendChild(h("h3",null,[document.createTextNode(c.term),momChip(c)]));
     card.appendChild(h("div",{class:"v num"},[document.createTextNode(String(Math.round(c.value))),
-      h("small",null," /100"+(c.rank?(" · "+c.rank+"위"):""))]));
+      h("small",null," · "+(M.anchor||"앵커")+"=100"+(c.rank?(" · "+c.rank+"위"):""))]));
     const sp=spark(c.spark,c.category==="core"?"var(--core)":"var(--copper2)",220,44);
     if(sp)card.appendChild(sp);
     card.appendChild(h("p",{class:"cap"},c.caption));
@@ -430,7 +436,7 @@ app.appendChild(mast);
 
 /* ── No.04 제품 관심도 ── */
 (function(){const rk=DATA.interest_ranking||[]; if(!rk.length)return;
-  const sec=sect("sec-rank","제품 관심도","제품 검색 관심도 (제품 앵커=100). 파랑 = 우리 코어, 황동 = 레이더 — 브랜드는 별도 섹션");
+  const sec=sect("sec-rank","제품 관심도","제품 검색 관심도 — "+(M.anchor||"앵커")+"의 30일 평균=100 기준, 100 초과 = "+(M.anchor||"앵커")+"보다 검색량 많음. 파랑 = 우리 코어, 황동 = 레이더");
   const card=h("div",{class:"card"});
   const maxv=Math.max.apply(null,rk.map(x=>x.interest).concat([1]));
   const shown=rk.slice(0,24);
@@ -448,7 +454,7 @@ app.appendChild(mast);
 
 /* ── No.05 검색 관심도 추이 ── */
 (function(){if(!DATA.chart.dates.length)return;
-  const sec=sect("sec-chart","검색 관심도 추이",M.trend_label+" 일별 지수 (0~100 상대 정규화) — 차트에 마우스를 올리면 일별 값");
+  const sec=sect("sec-chart","검색 관심도 추이",M.trend_label+" 일별 지수 ("+(M.anchor||"앵커")+"=100 상대) — 차트에 마우스를 올리면 일별 값");
   const cc=h("div",{class:"card chartcard"});
   cc.appendChild(buildChart(DATA,cc));
   const lg=h("div",{class:"legend"});
@@ -520,8 +526,9 @@ function signalCard(DATA,c,extra){
   if(extra)sub.appendChild(h("span",{class:"chip"},extra));
   const sb=seasonBadge(c.season); if(sb&&c.season&&c.season.status!=="no_data")sub.appendChild(sb);
   if(sub.childNodes.length)card.appendChild(sub);
+  const basis=c.category==="brands"?"1등 브랜드=100":(DATA.meta.anchor||"앵커")+"=100";
   card.appendChild(h("div",{class:"v num"},[document.createTextNode(String(Math.round(c.value))),
-    h("small",null," /100 · 피크 "+Math.round(c.peak||0))]));
+    h("small",null," · "+basis+" · 피크 "+Math.round(c.peak||0))]));
   const sp=spark(c.spark,c.category==="core"?"var(--core)":c.category==="brands"?"var(--steady)":"var(--copper2)",220,40);
   if(sp)card.appendChild(sp);
   card.appendChild(h("p",{class:"cap"},c.caption));

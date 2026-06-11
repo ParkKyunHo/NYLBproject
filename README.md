@@ -22,7 +22,11 @@ pip install -e ".[dev]"
 python -m nylb dashboard               # 로컬 상황판 서버 — '스캔 실행' 버튼 한 번이면 끝
 python -m nylb scan --lens menu        # 수집만 → data/raw/<run_id>.json + .digest.md
 python -m nylb report-html --run <id>  # 저장된 런으로 상황판 HTML 생성
+python -m nylb report-pdf --run <id>   # 상황판을 PDF로 추출 (Edge/Chrome 헤드리스, 의존성 0)
 ```
+대시보드 우하단 버튼: **◉ 스캔 실행** · **⬇ PDF** (현재 보드를 PDF 다운로드) · **⬇ HTML**
+(자체완결 HTML 다운로드 — 오프라인/공유용). PDF는 설치된 Edge/Chrome을 헤드리스로 사용하며
+다른 브라우저를 쓰려면 `NYLB_BROWSER` 환경변수에 실행파일 경로를 지정한다.
 Claude Code에서: `/trend-scan 베이글 신메뉴`  → 수집 후 분석 리포트(`reports/`) 생성.
 
 ## 테스트

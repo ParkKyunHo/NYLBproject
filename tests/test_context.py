@@ -18,7 +18,8 @@ def test_contextualize_computes_vs_baseline_and_rank():
     assert cm["direction"] == "up"
     assert cm["vs_baseline"] == 14.0  # 10/70*100 rounded
     assert cm["rank"] == 1 and cm["total"] == 4
-    assert "관심도 87/100" in cm["caption"]
+    assert "관심도 87" in cm["caption"]
+    assert "/100" not in cm["caption"]   # anchor-relative scale can exceed 100
     assert "4개 중 1위" in cm["caption"]
 
 

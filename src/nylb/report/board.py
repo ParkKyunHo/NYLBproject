@@ -149,7 +149,9 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
     ]
     data_trust = [{"note": f"{src} {n}건 관련성 필터 제외", "severity": "info"}
                   for src, n in result.dropped_by_source.items()]
-    data_trust.append({"note": "검색 관심도는 0~100 상대 정규화 지표 — "
+    anchor = result.query.get("anchor") or "앵커"
+    data_trust.append({"note": f"제품 검색 관심도는 {anchor}의 30일 평균=100 기준 상대 지표 — "
+                               f"100 초과는 {anchor}보다 검색량이 많다는 뜻. "
                                "절대 수요 우열로 단정 금지", "severity": "info"})
     if season_of:
         data_trust.append({"note": "시즌 지수는 약 3년 월별 평균(자기 평균=100) 기반 — "
@@ -168,6 +170,7 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
             "errors": len(result.errors),
             "counts": counts,
             "trend_label": label,
+            "anchor": result.query.get("anchor"),
             "sources_status": sources_status,
         },
         "headline": {
@@ -191,7 +194,8 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
             for t, st in ranked if not _is_brand(t)
         ],
         "chart": {**build_chart_block(chart),
-                  "note": f"{label} 기준 검색 관심도 추이. 상대 정규화(0~100) — "
+                  "note": f"{label} 기준 검색 관심도 추이. {anchor}=100 상대 정규화 — "
+                          f"100 초과는 {anchor}보다 검색 관심이 높다는 뜻. "
                           "절대 수요 우열로 단정하지 마세요."},
         "matrix": chart.get("matrix", {}),
         "competitors": chart.get("competitors", []),

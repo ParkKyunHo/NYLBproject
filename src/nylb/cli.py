@@ -36,6 +36,10 @@ def _build_parser() -> argparse.ArgumentParser:
     rh_p = sub.add_parser("report-html", help="render the analysis HTML dashboard")
     rh_p.add_argument("--run", required=True)
     rh_p.add_argument("--store", default="nylb")
+    rp_p = sub.add_parser("report-pdf", help="render the dashboard and export it as PDF")
+    rp_p.add_argument("--run", required=True)
+    rp_p.add_argument("--out", default=None,
+                      help="output path (default reports/<run>.analysis.pdf)")
     dash_p = sub.add_parser("dashboard", help="local one-click board server")
     dash_p.add_argument("--lenses", default="menu,beverage",
                         help="comma-separated lenses to show as tabs")
@@ -49,6 +53,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "report-html":
         return _report_html(args)
+    if args.cmd == "report-pdf":
+        return _report_pdf(args)
     if args.cmd == "dashboard":
         return _dashboard(args)
 
@@ -85,6 +91,20 @@ def _report_html(args) -> int:
     html = build_dashboard(result, chart, news_context=news)
     path = write_text_report(html, args.run, out_dir="reports", suffix=".analysis.html")
     print(f"html={path}")
+    return 0
+
+
+def _report_pdf(args) -> int:
+    from nylb.config import load_settings
+    from nylb.report.news import gather_riser_news
+    from nylb.report.pdf import export_pdf
+    result = LocalJsonStore().load(args.run)
+    chart = extract_chart_data(result)
+    news = gather_riser_news(result, chart, load_settings())
+    html = build_dashboard(result, chart, news_context=news)
+    out = args.out or f"reports/{args.run}.analysis.pdf"
+    path = export_pdf(html, out)
+    print(f"pdf={path}")
     return 0
 
 

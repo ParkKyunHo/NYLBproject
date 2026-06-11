@@ -38,7 +38,9 @@ def contextualize(term: str, stats: dict,
 
 def caption(cm: dict) -> str:
     """One-line OBSERVATION (rule-based). Never contains prescriptive wording."""
-    parts = [f"관심도 {cm['value']:.0f}/100"]
+    # Interest is anchor-relative (anchor's 30-day mean = 100), so values can
+    # exceed 100 — never print a "/100" denominator here.
+    parts = [f"관심도 {cm['value']:.0f}"]
     if cm.get("rank") is not None and cm.get("total"):
         parts.append(f"{cm['total']}개 중 {cm['rank']}위")
     if cm.get("vs_baseline") is not None:
