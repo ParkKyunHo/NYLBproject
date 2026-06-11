@@ -1,6 +1,10 @@
 # NYLB 시장조사 도구
 
-무료 공식 API로 SNS·검색 트렌드를 수집하고 Claude Code가 분석·리포트를 작성하는 온디맨드 도구.
+무료 공식 API로 SNS·검색 트렌드를 수집해 **결정론 의사결정 상황판**(LLM 평결 없음)을 자동 생성하는 도구.
+
+상황판 구성: 신메뉴 기회 보드(공식 공개 점수 = 관심도 30%·30일 성장 30%·시즌 25%·방향 15%)
+· 시즌 캘린더(네이버 3년 월별 시즌 지수) · 지금 뜨는 제품(모멘텀+스파크라인) · 제품/브랜드
+관심도 · 추이 차트 · 미검증 신호 격리 · 가격 포지셔닝 · 데이터 신뢰도.
 
 ## 설치
 ```
@@ -15,7 +19,9 @@ pip install -e ".[dev]"
 
 ## 사용
 ```
-python -m nylb scan --lens menu        # 수집 → data/raw/<run_id>.json + .digest.md
+python -m nylb dashboard               # 로컬 상황판 서버 — '스캔 실행' 버튼 한 번이면 끝
+python -m nylb scan --lens menu        # 수집만 → data/raw/<run_id>.json + .digest.md
+python -m nylb report-html --run <id>  # 저장된 런으로 상황판 HTML 생성
 ```
 Claude Code에서: `/trend-scan 베이글 신메뉴`  → 수집 후 분석 리포트(`reports/`) 생성.
 
