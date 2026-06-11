@@ -8,8 +8,6 @@ from nylb.config import get_lens_config, load_lenses, load_settings
 from nylb.core.analyzer import ClaudeCodeAnalyzer
 from nylb.core.scan import run_scan
 from nylb.core.store import LocalJsonStore, SupabaseStore
-from nylb.report.chart_data import extract_chart_data
-from nylb.report.html import build_dashboard
 from nylb.report.writer import write_text_report
 
 
@@ -82,26 +80,26 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def _report_html(args) -> int:
+def _single_dashboard_html(run_id: str) -> str:
     from nylb.config import load_settings
-    from nylb.report.news import gather_riser_news
-    result = LocalJsonStore().load(args.run)
-    chart = extract_chart_data(result)
-    news = gather_riser_news(result, chart, load_settings())
-    html = build_dashboard(result, chart, news_context=news)
+    from nylb.report.html import build_multi_dashboard
+    from nylb.report.multi import build_board_full
+    result = LocalJsonStore().load(run_id)
+    board = build_board_full(result, settings=load_settings())
+    return build_multi_dashboard([{"key": result.lens, "label": result.lens,
+                                   "icon": "🍽", "board": board}])
+
+
+def _report_html(args) -> int:
+    html = _single_dashboard_html(args.run)
     path = write_text_report(html, args.run, out_dir="reports", suffix=".analysis.html")
     print(f"html={path}")
     return 0
 
 
 def _report_pdf(args) -> int:
-    from nylb.config import load_settings
-    from nylb.report.news import gather_riser_news
     from nylb.report.pdf import export_pdf
-    result = LocalJsonStore().load(args.run)
-    chart = extract_chart_data(result)
-    news = gather_riser_news(result, chart, load_settings())
-    html = build_dashboard(result, chart, news_context=news)
+    html = _single_dashboard_html(args.run)
     out = args.out or f"reports/{args.run}.analysis.pdf"
     path = export_pdf(html, out)
     print(f"pdf={path}")

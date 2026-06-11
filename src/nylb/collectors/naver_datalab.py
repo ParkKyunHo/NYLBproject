@@ -92,6 +92,60 @@ def _parse(payload: dict, query: dict, lens: str, collected_at: datetime,
     return items
 
 
+# DataLab age codes: 2=13-18, 3=19-24, 4=25-29, 5=30-34, 6=35-39,
+# 7=40-44, 8=45-49, 9=50-54, 10=55-59, 11=60+
+AGE_BUCKETS = {"10대": ["2"], "20대": ["3", "4"], "30대": ["5", "6"],
+               "40대": ["7", "8"], "50+": ["9", "10", "11"]}
+
+
+def _momentum(series: list[dict]) -> float:
+    vals = [float(p["value"]) for p in series]
+    if not vals:
+        return 0.0
+    last = vals[-3:]
+    prev = vals[:-3] or last
+    return round(sum(last) / len(last) - sum(prev) / len(prev), 1)
+
+
+def collect_age_trends(terms: list[str], *, settings: dict,
+                       days: int = 30) -> dict[str, dict]:
+    """Per-age-bucket 30-day search TREND for each term -> {term: {bucket:
+    {direction, momentum}}}. DataLab ratios are normalized per request, so
+    absolute volume is NOT comparable across buckets — momentum/direction are
+    scale-free and valid. Best-effort: failed buckets are simply absent."""
+    from nylb.core.context import direction
+
+    cid = settings.get("naver_client_id")
+    csec = settings.get("naver_client_secret")
+    terms = [t for t in dict.fromkeys(terms) if t]
+    if not (cid and csec) or not terms:
+        return {}
+    end = datetime.now(timezone.utc).date()
+    start = end - timedelta(days=days)
+    headers = {"X-Naver-Client-Id": cid, "X-Naver-Client-Secret": csec,
+               "Content-Type": "application/json"}
+    out: dict[str, dict] = {t: {} for t in terms}
+    for bucket, ages in AGE_BUCKETS.items():
+        for group in _chunks(terms, 5):
+            body = {"startDate": start.isoformat(), "endDate": end.isoformat(),
+                    "timeUnit": "date", "ages": ages,
+                    "keywordGroups": [{"groupName": t, "keywords": [t]} for t in group]}
+            try:
+                r = httpx.post(_URL, json=body, headers=headers, timeout=30)
+                r.raise_for_status()
+                results = r.json().get("results", [])
+            except Exception:
+                continue  # best-effort per bucket/batch
+            for res in results:
+                series = [{"date": d["period"], "value": float(d["ratio"])}
+                          for d in res.get("data", [])]
+                mom = _momentum(series)
+                out[res.get("title", "")] = out.get(res.get("title", ""), {})
+                out[res["title"]][bucket] = {"momentum": mom,
+                                             "direction": direction(mom)}
+    return {t: b for t, b in out.items() if b}
+
+
 def collect(query: dict, lens: str, *, settings: dict, collected_at: datetime) -> CollectResult:
     items: list[Item] = []
     errors: list[CollectError] = []

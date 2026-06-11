@@ -6,6 +6,7 @@
 # Collected data & generated reports
 data/raw/
 data/cache/
+data/boards/
 reports/*.md
 reports/*.pdf
 reports/*.html

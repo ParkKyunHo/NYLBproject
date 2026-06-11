@@ -296,6 +296,30 @@ function seasonBadge(se){
   return b;
 }
 function momChip(c){return h("span",{class:"mom "+c.direction},ARROW[c.direction]+" "+(c.momentum>=0?"+":"")+fmt(c.momentum));}
+function buzzChip(c){
+  const b=c.buzz; if(!b||(b.youtube+b.naver)<1)return null;
+  const parts=[]; if(b.youtube)parts.push("▶ 유튜브 "+b.youtube);
+  if(b.naver)parts.push("✍ 블로그·검색 "+b.naver);
+  return h("span",{class:"chip",title:"최근 수집분에서 이 용어를 언급한 콘텐츠 수"
+    +(b.views?(" · 유튜브 조회 합계 "+b.views.toLocaleString()):"")},parts.join(" · "));}
+function deltaRankChip(DATA,term){
+  const d=DATA.delta; if(!d||!d.rank_moves)return null;
+  const m=d.rank_moves[term]; if(!m)return null;
+  if(m.new)return h("span",{class:"badge entering",title:"전회("+d.prev_date+") 미등장"},"NEW");
+  if(m.move>0)return h("span",{style:"color:var(--up);font-weight:800;font-size:11.5px",
+    title:"전회 "+m.prev+"위 → "+m.cur+"위"},"▲"+m.move);
+  if(m.move<0)return h("span",{style:"color:var(--down);font-weight:800;font-size:11.5px",
+    title:"전회 "+m.prev+"위 → "+m.cur+"위"},"▼"+(-m.move));
+  return h("span",{style:"color:var(--faint);font-size:11.5px"},"—");}
+function ageRow(DATA,term){
+  const at=(DATA.age_trends||{})[term]; if(!at)return null;
+  const row=h("div",{style:"margin-top:9px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"});
+  row.appendChild(h("span",{class:"caps",style:"font-size:9.5px"},"연령 추세"));
+  ["10대","20대","30대","40대","50+"].forEach(b=>{const t=at[b]; if(!t)return;
+    row.appendChild(h("span",{class:"chip",style:"color:"+DCOL[t.direction],
+      title:b+" 검색 30일 모멘텀 "+(t.momentum>=0?"+":"")+t.momentum+" (연령 간 절대량 비교 불가 — 추세만)"},
+      b+" "+ARROW[t.direction]));});
+  return row.childNodes.length>1?row:null;}
 function newsLinks(DATA,term){
   const nx=(DATA.news_context||{})[term]||[]; if(!nx.length)return null;
   const bx=h("div",{class:"newsbx"});
@@ -352,7 +376,8 @@ band.appendChild(stat("기회 점수 1위",h("div",{class:"sv"},opp1?opp1.term:"
 mast.appendChild(band);
 mast.appendChild(h("div",{class:"mast-note",html:
   "<span>신호는 시스템이, <b>판단은 사장님이</b> — 아래 모든 수치는 검증 마커·맥락이 붙은 관찰값입니다. 평결 없음.</span>"+
-  "<span>결정론 자동생성 · LLM 없음 · ₩0</span>"}));
+  "<span>"+(DATA.delta?("전회 "+esc(DATA.delta.prev_date)+" 대비 변화 표시 중 · "):"")+
+  "결정론 자동생성 · LLM 없음 · ₩0</span>"}));
 app.appendChild(mast);
 
 /* ── No.01 신메뉴 기회 보드 ── */
@@ -367,7 +392,10 @@ app.appendChild(mast);
     card.appendChild(left);
     const right=h("div");
     right.appendChild(h("h3",null,[document.createTextNode(c.term),
-      h("span",{class:"chip"},c.category||"radar"),seasonBadge(c.season),momChip(c)]));
+      h("span",{class:"chip"},c.category||"radar"),seasonBadge(c.season),momChip(c),buzzChip(c)]));
+    const sm=((DATA.delta||{}).score_moves||{})[c.term];
+    if(sm!=null)right.appendChild(h("div",{style:"font-size:11.5px;font-weight:700;margin-top:2px;color:"+(sm>=0?"var(--up)":"var(--down)")},
+      "기회 점수 "+(sm>=0?"+":"")+sm+" (전회 "+(DATA.delta.prev_date||"")+" 대비)"));
     right.appendChild(h("p",{class:"cap"},c.caption));
     const fb=h("div",{class:"fbars"});
     Object.values(c.opportunity.parts).forEach((p,j)=>{
@@ -383,12 +411,17 @@ app.appendChild(mast);
     const strip=seasonStrip(c.season,monthNow);
     if(strip){right.appendChild(strip);
       right.appendChild(h("div",{class:"slegend"},[h("span",null,"1월"),h("span",null,"12월")]));}
+    const ar=ageRow(DATA,c.term); if(ar)right.appendChild(ar);
+    if(c.pairings&&c.pairings.length)right.appendChild(h("div",
+      {style:"margin-top:8px;font-size:12px;color:var(--ink2)"},
+      [h("span",{class:"caps",style:"font-size:9.5px;margin-right:7px"},"조합 탐색"),
+       document.createTextNode(c.pairings.join(" · ")+"  (기계 조합 — 아이디어 출발점)")]));
     const nl=newsLinks(DATA,c.term); if(nl)right.appendChild(nl);
     card.appendChild(right);
     g.appendChild(card);
   });
   const b=body(sec); b.appendChild(g);
-  b.appendChild(h("div",{class:"note"},"점수 산식과 4개 부분점수를 전부 공개합니다. 시즌 25%는 다가오는 1~2개월의 시즌 지수 — 준비 리드타임을 반영한 신호이지 출시 지시가 아닙니다."));
+  b.appendChild(h("div",{class:"note"},"점수 산식과 4개 부분점수를 전부 공개합니다. 시즌 25%는 다가오는 1~2개월의 시즌 지수 — 준비 리드타임을 반영한 신호이지 출시 지시가 아닙니다. 연령 추세는 연령별 검색의 30일 방향만 — 연령 간 절대 검색량 비교는 불가(척도 분리). 조합 탐색은 기계 조합 나열이며 추천이 아닙니다."));
   app.appendChild(sec);})();
 
 /* ── No.02 시즌 캘린더 ── */
@@ -424,6 +457,7 @@ app.appendChild(mast);
   mvs.forEach(c=>{
     const card=h("div",{class:"mvc"});
     card.appendChild(h("h3",null,[document.createTextNode(c.term),momChip(c)]));
+    const bz=buzzChip(c); if(bz)card.appendChild(h("div",{style:"margin-top:3px"},bz));
     card.appendChild(h("div",{class:"v num"},[document.createTextNode(String(Math.round(c.value))),
       h("small",null," · "+(M.anchor||"앵커")+"=100"+(c.rank?(" · "+c.rank+"위"):""))]));
     const sp=spark(c.spark,c.category==="core"?"var(--core)":"var(--copper2)",220,44);
@@ -442,7 +476,10 @@ app.appendChild(mast);
   const shown=rk.slice(0,24);
   shown.forEach((x,i)=>{
     const row=h("div",{class:"rrow"});
-    row.appendChild(h("div",{class:"rt"+(x.core?" core":"")},(x.core?"★ ":"")+x.term));
+    const dch=deltaRankChip(DATA,x.term);
+    row.appendChild(h("div",{class:"rt"+(x.core?" core":""),
+      style:"display:flex;align-items:center;gap:6px"},
+      [document.createTextNode((x.core?"★ ":"")+x.term),dch]));
     const bar=h("div",{class:"rbar"});
     bar.appendChild(h("i",{class:x.core?"core":"",style:"width:"+(x.interest/maxv*100)+"%;animation-delay:"+Math.min(i*40,600)+"ms"}));
     row.appendChild(bar);
@@ -525,6 +562,7 @@ function signalCard(DATA,c,extra){
   const sub=h("div",{style:"margin-top:3px;display:flex;gap:7px;align-items:center;flex-wrap:wrap"});
   if(extra)sub.appendChild(h("span",{class:"chip"},extra));
   const sb=seasonBadge(c.season); if(sb&&c.season&&c.season.status!=="no_data")sub.appendChild(sb);
+  const bz=buzzChip(c); if(bz)sub.appendChild(bz);
   if(sub.childNodes.length)card.appendChild(sub);
   const basis=c.category==="brands"?"1등 브랜드=100":(DATA.meta.anchor||"앵커")+"=100";
   card.appendChild(h("div",{class:"v num"},[document.createTextNode(String(Math.round(c.value))),

@@ -14,6 +14,7 @@ nylb:
         seasonal: [딸기, 복숭아, 무화과, 밤, 고구마, 단호박, 옥수수, 유자]
         brands:   [성심당, 런던베이글뮤지엄, 노티드, 아우어베이커리, 포비, 뚜레쥬르, 파리바게뜨, 이성당]
       radar_seeds: [베이글, 디저트, 베이커리]
+      pairing_categories: [flavor, seasonal]   # 기회 용어 × 코어 기계 조합 표시 대상
       sources: [youtube, naver, google_trends, naver_datalab]
       synonyms:
         베이글: [bagel]

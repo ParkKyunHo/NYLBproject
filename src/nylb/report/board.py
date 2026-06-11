@@ -5,6 +5,7 @@ from nylb.core.context import contextualize
 from nylb.core.discover import discover_candidates
 from nylb.core.schema import ScanResult
 from nylb.core.season import monthly_profile, season_summary
+from nylb.core.signal import is_relevant
 from nylb.core.verify import verify_rising
 
 _COLORS = {"베이글": "#33598f", "소금빵": "#c2562a", "크로플": "#8d7d67"}
@@ -61,11 +62,30 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
     season_of = {term: season_summary(monthly_profile(series), month_now)
                  for term, series in monthly.items()}
 
+    # Content buzz: how much YouTube/blog content mentions the term — a second
+    # axis independent of search interest, from already-collected items (₩0).
+    content_items = [it for it in result.items if it.source in ("youtube", "naver")]
+    synonyms = result.query.get("synonyms", {}) or {}
+
+    def _buzz(term):
+        yt = nv = 0
+        views = 0.0
+        for it in content_items:
+            if not is_relevant(it, [term], synonyms):
+                continue
+            if it.source == "youtube":
+                yt += 1
+                views += it.metrics.get("views", 0.0)
+            else:
+                nv += 1
+        return {"youtube": yt, "naver": nv, "views": int(views)}
+
     def _ctx(term, st):
         cm = contextualize(term, st, rank_of.get(term), total)
         cm["category"] = cats.get(term, "core" if term in core_set else "radar")
         cm["spark"] = list(st.get("daily", {}).values())[-31:]
         cm["season"] = season_of.get(term)
+        cm["buzz"] = _buzz(term)
         return cm
 
     core_signals = [_ctx(t, tstats[t]) for t in core if t in tstats]
@@ -94,6 +114,7 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
         cm["category"] = _BRAND_CAT
         cm["spark"] = list(st.get("daily", {}).values())[-31:]  # shape-only, scale-free
         cm["season"] = None
+        cm["buzz"] = _buzz(term)
         return cm
 
     brand_signals = [_brand_ctx(t, st) for t, st in brand_terms]
@@ -105,10 +126,9 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
                      for t, st in brand_terms]
     brand_ranking.sort(key=lambda x: x["interest"], reverse=True)
 
-    content_items = [it for it in result.items if it.source in ("youtube", "naver")]
     datalab_terms = set(chart["trends"].get("naver_datalab", {}).keys())
     known_terms = core_set | set(chart.get("radar_watchlist", []))
-    for syns in (result.query.get("synonyms", {}) or {}).values():
+    for syns in synonyms.values():
         known_terms.update(syns)
     verdict = verify_rising(chart.get("rising", []), content_items,
                             datalab_terms, known_terms)
@@ -123,9 +143,20 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
 
     # 신메뉴 기회 보드: radar(=not yet ours, not a brand) terms scored by the
     # disclosed deterministic formula. Ranking only — judgement stays with the owner.
-    opportunities = sorted(
-        ({**c, "opportunity": opportunity.score(c, c.get("season"))} for c in radar),
-        key=lambda c: c["opportunity"]["score"], reverse=True)[:8]
+    # pairing_categories (config whitelist) adds mechanical term×core combinations
+    # as idea starters — combinatorics, not a recommendation.
+    pairing_cats = set(result.query.get("pairing_categories", []) or [])
+    top_core = [c["term"] for c in
+                sorted(core_signals, key=lambda c: c["value"], reverse=True)[:2]]
+
+    def _opp_entry(c):
+        e = {**c, "opportunity": opportunity.score(c, c.get("season"))}
+        if pairing_cats and c.get("category") in pairing_cats and top_core:
+            e["pairings"] = [f"{c['term']}×{k}" for k in top_core]
+        return e
+
+    opportunities = sorted((_opp_entry(c) for c in radar),
+                           key=lambda c: c["opportunity"]["score"], reverse=True)[:8]
 
     # 시즌 캘린더: every product term with a seasonal profile, prep-window first.
     _SEASON_ORDER = {"entering": 0, "in_season": 1, "off": 2, "no_data": 3}
