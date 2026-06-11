@@ -3,10 +3,13 @@ from __future__ import annotations
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 _BUTTON = (
-    "<div style=\"position:fixed;right:20px;bottom:20px;z-index:9999\">"
-    "<button id=\"nylb-run\" style=\"background:#c8742f;color:#fff;border:0;"
-    "border-radius:999px;padding:13px 22px;font-size:15px;font-weight:800;"
-    "box-shadow:0 6px 20px rgba(45,38,32,.3);cursor:pointer\">🔄 스캔 실행</button></div>"
+    "<div style=\"position:fixed;right:22px;bottom:22px;z-index:9999\">"
+    "<button id=\"nylb-run\" style=\"background:#201710;color:#f3e8d2;"
+    "border:1px solid #a8772a;border-radius:999px;padding:14px 26px;"
+    "font-size:14px;font-weight:800;letter-spacing:.06em;font-family:inherit;"
+    "box-shadow:0 14px 34px -10px rgba(32,23,16,.55);cursor:pointer\""
+    " onmouseover=\"this.style.background='#2e2417'\""
+    " onmouseout=\"this.style.background='#201710'\">◉ 스캔 실행</button></div>"
     "<script>document.getElementById('nylb-run').onclick=function(){"
     "this.textContent='⏳ 수집 중...';this.disabled=true;"
     "fetch('/run',{method:'POST'}).then(function(){location.reload();}).catch(function(){location.reload();});};</script>"

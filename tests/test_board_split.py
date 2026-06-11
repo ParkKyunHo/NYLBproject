@@ -55,8 +55,7 @@ def test_no_brands_yields_empty_brand_lists():
 def test_dashboard_renders_product_and_brand_sections():
     from nylb.report.html import build_dashboard
     html = build_dashboard(_result(), extract_chart_data(_result()))
-    assert "제품 관심도" in html and "브랜드 관심도" in html
-    assert "브랜드 신호" in html
+    assert "제품 관심도" in html and "브랜드 동향" in html
     assert '"brand_ranking"' in html and '"brand_signals"' in html
 
 

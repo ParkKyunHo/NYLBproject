@@ -7,8 +7,8 @@ from nylb.core.schema import ScanResult
 from nylb.core.season import monthly_profile, season_summary
 from nylb.core.verify import verify_rising
 
-_COLORS = {"소금빵": "var(--salt)", "베이글": "var(--bagel)", "크로플": "var(--croffle)"}
-_PALETTE = ["#7c5cff", "#2f9e5b", "#d24b4b", "#e2a32f", "#1f9d57"]
+_COLORS = {"베이글": "#33598f", "소금빵": "#c2562a", "크로플": "#8d7d67"}
+_PALETTE = ["#7a5ca8", "#2e7d4f", "#bf4934", "#c2912e", "#496f5d"]
 _BRAND_CAT = "brands"  # the single config↔engine coupling: the radar category treated as brands
 
 
