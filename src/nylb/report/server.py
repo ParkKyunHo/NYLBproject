@@ -14,6 +14,11 @@ _BTN_GHOST = ("background:#fffdf6;color:#241b10;border:1px solid #d6c9ad;"
 _BUTTON = (
     "<div id=\"nylb-actions\" style=\"position:fixed;right:22px;bottom:22px;"
     "z-index:9999;display:flex;gap:10px;align-items:center\">"
+    "<form action=\"/validate\" method=\"get\" target=\"_blank\" style=\"margin:0\">"
+    "<input name=\"term\" placeholder=\"🔬 후보 검증 (예: 복숭아 크림치즈)\" required"
+    " style=\"background:#fffdf6;color:#241b10;border:1px solid #d6c9ad;"
+    "border-radius:999px;padding:14px 18px;font-size:13px;font-family:inherit;"
+    "width:230px;box-shadow:0 10px 26px -12px rgba(32,23,16,.4)\"></form>"
     f"<a id=\"nylb-pdf\" href=\"/pdf\" style=\"{_BTN_GHOST}\">⬇ PDF</a>"
     f"<a id=\"nylb-html\" href=\"/download\" style=\"{_BTN_GHOST}\">⬇ HTML</a>"
     "<button id=\"nylb-run\" style=\"background:#201710;color:#f3e8d2;"
@@ -46,11 +51,19 @@ def run_lenses_and_render(lens_keys: list[str], *, lenses_file: str = "config/le
                                   settings=load_settings(), collectors=collectors)
 
 
+def _default_validate(term: str, lens: str, lenses_file: str) -> str:
+    from nylb.config import load_settings
+    from nylb.report.validate import run_validation
+    return run_validation(term, lens=lens, lenses_file=lenses_file,
+                          settings=load_settings())
+
+
 def make_server(host: str = "127.0.0.1", port: int = 8765, *,
                 lens: str = "menu", lens_keys=None, lenses_file: str = "config/lenses.yaml",
-                render_fn=None, **_) -> ThreadingHTTPServer:
+                render_fn=None, validate_fn=None, **_) -> ThreadingHTTPServer:
     keys = lens_keys or [lens]
     render = render_fn or (lambda: run_lenses_and_render(keys, lenses_file=lenses_file))
+    validate = validate_fn or (lambda term: _default_validate(term, keys[0], lenses_file))
     # single shared board HTML; GIL makes dict get/set atomic — fine for single-user local use
     state = {"html": _PLACEHOLDER}
 
@@ -77,6 +90,16 @@ def make_server(host: str = "127.0.0.1", port: int = 8765, *,
                 self._send_bytes(200, state["html"].encode("utf-8"),
                                  "text/html; charset=utf-8",
                                  f"nylb-board-{stamp}.html")
+            elif self.path.startswith("/validate"):
+                from urllib.parse import parse_qs, urlparse
+                term = (parse_qs(urlparse(self.path).query).get("term") or [""])[0].strip()
+                if not term:
+                    self._send(400, "term 파라미터가 필요합니다 (예: /validate?term=복숭아 크림치즈)")
+                    return
+                try:
+                    self._send(200, validate(term))
+                except Exception as exc:
+                    self._send(500, f"검증 실패: {exc}")
             elif self.path == "/pdf":
                 try:
                     with tempfile.TemporaryDirectory() as td:

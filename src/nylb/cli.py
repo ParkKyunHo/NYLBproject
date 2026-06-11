@@ -38,6 +38,11 @@ def _build_parser() -> argparse.ArgumentParser:
     rp_p.add_argument("--run", required=True)
     rp_p.add_argument("--out", default=None,
                       help="output path (default reports/<run>.analysis.pdf)")
+    val_p = sub.add_parser("validate", help="validate one candidate idea (mini-scan)")
+    val_p.add_argument("--term", required=True, help='후보명 (예: "복숭아 크림치즈")')
+    val_p.add_argument("--lens", default="menu")
+    val_p.add_argument("--lenses-file", default="config/lenses.yaml")
+    val_p.add_argument("--pdf", action="store_true", help="also export as PDF")
     dash_p = sub.add_parser("dashboard", help="local one-click board server")
     dash_p.add_argument("--lenses", default="menu,beverage",
                         help="comma-separated lenses to show as tabs")
@@ -53,6 +58,8 @@ def main(argv: list[str] | None = None) -> int:
         return _report_html(args)
     if args.cmd == "report-pdf":
         return _report_pdf(args)
+    if args.cmd == "validate":
+        return _validate(args)
     if args.cmd == "dashboard":
         return _dashboard(args)
 
@@ -103,6 +110,24 @@ def _report_pdf(args) -> int:
     out = args.out or f"reports/{args.run}.analysis.pdf"
     path = export_pdf(html, out)
     print(f"pdf={path}")
+    return 0
+
+
+def _validate(args) -> int:
+    import re
+
+    from nylb.report.validate import run_validation
+    html = run_validation(args.term, lens=args.lens, lenses_file=args.lenses_file,
+                          settings=load_settings())
+    slug = re.sub(r"[^0-9A-Za-z가-힣]+", "-", args.term).strip("-") or "candidate"
+    now = datetime.now(timezone.utc)
+    path = write_text_report(html, f"{now:%Y-%m-%d}-validate-{slug}",
+                             out_dir="reports", suffix=".html")
+    print(f"html={path}")
+    if args.pdf:
+        from nylb.report.pdf import export_pdf
+        pdf = export_pdf(html, f"reports/{now:%Y-%m-%d}-validate-{slug}.pdf")
+        print(f"pdf={pdf}")
     return 0
 
 

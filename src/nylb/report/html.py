@@ -615,6 +615,22 @@ function signalCard(DATA,c,extra){
     const g=h("div",{class:"grid g3",style:"margin-top:14px"});
     bs.slice(0,6).forEach(c=>g.appendChild(signalCard(DATA,c,(c.rank||"-")+"위")));
     b.appendChild(g);}
+  const bl=DATA.brand_launches||{};
+  if(Object.keys(bl).length){
+    const card=h("div",{class:"card",style:"margin-top:14px"});
+    card.appendChild(h("div",{class:"caps",style:"margin-bottom:10px"},"경쟁 브랜드 신제품 동향 — 출시·신메뉴·콜라보 기사만 통과"));
+    Object.entries(bl).forEach(([brand,heads])=>{
+      const row=h("div",{style:"display:grid;grid-template-columns:130px 1fr;gap:12px;padding:9px 0;border-top:1px dashed var(--hair)"});
+      row.appendChild(h("div",{style:"font-weight:800;font-size:13.5px"},brand));
+      const lst=h("div");
+      heads.forEach(nw=>{
+        const d=(nw.date||"").split(" ").slice(1,4).join(" ");
+        lst.appendChild(h("a",{href:nw.link,target:"_blank",rel:"noopener noreferrer",
+          style:"display:block;font-size:12.5px;color:var(--ink2);text-decoration:none;margin-bottom:3px"},
+          "— "+nw.title+(d?("  ("+d+")"):"")));});
+      row.appendChild(lst);card.appendChild(row);});
+    card.appendChild(h("div",{class:"note"},"경쟁사가 지금 무엇을 내놓는지의 원자료 피드 — 따라하라는 신호가 아니라 시장 좌표입니다."));
+    b.appendChild(card);}
   app.appendChild(sec);})();
 
 /* ── No.09 미검증 원시신호 (격리) ── */

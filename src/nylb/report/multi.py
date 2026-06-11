@@ -10,7 +10,7 @@ from nylb.report.board import build_board
 from nylb.report.chart_data import extract_chart_data
 from nylb.report.history import compare_boards, load_previous, save_board
 from nylb.report.html import build_multi_dashboard
-from nylb.report.news import gather_riser_news
+from nylb.report.news import gather_brand_launches, gather_riser_news
 
 
 def build_board_full(result, *, settings: dict) -> dict:
@@ -24,6 +24,9 @@ def build_board_full(result, *, settings: dict) -> dict:
         ages = naver_datalab.collect_age_trends(opp_terms, settings=settings)
         if ages:
             board["age_trends"] = ages
+    launches = gather_brand_launches(result, settings)
+    if launches:
+        board["brand_launches"] = launches
     prev = load_previous(result.lens, board["meta"]["run_id"])
     delta = compare_boards(prev, board)
     if delta:
