@@ -8,6 +8,11 @@ from nylb.core.schema import CollectError, CollectResult, Item
 
 SOURCE = "naver_datalab"
 _URL = "https://openapi.naver.com/v1/datalab/search"
+# Seasonality needs multi-year context: a second pass fetches ~3 years of
+# monthly data (timeUnit=month) on top of the 30-day daily pass.
+MONTHLY_LOOKBACK_DAYS = 1095
+_PASSES = (("date", 30, "search_term"),
+           ("month", MONTHLY_LOOKBACK_DAYS, "search_term_monthly"))
 
 
 def _chunks(lst: list, n: int):
@@ -19,7 +24,8 @@ def _rescale(series: list[dict], factor: float) -> list[dict]:
     return [{"date": p["date"], "value": round(p["value"] * factor, 2)} for p in series]
 
 
-def _fetch(query: dict, settings: dict) -> dict:
+def _fetch(query: dict, settings: dict, *,
+           time_unit: str = "date", days: int = 30) -> dict:
     cid = settings.get("naver_client_id")
     csec = settings.get("naver_client_secret")
     if not (cid and csec):
@@ -33,7 +39,7 @@ def _fetch(query: dict, settings: dict) -> dict:
         anchor = None  # anchor must be queryable to rescale; else legacy
     others = [t for t in terms if t != anchor]
     end = datetime.now(timezone.utc).date()
-    start = end - timedelta(days=30)
+    start = end - timedelta(days=days)
     headers = {"X-Naver-Client-Id": cid, "X-Naver-Client-Secret": csec,
                "Content-Type": "application/json"}
     out: list[dict] = []
@@ -46,7 +52,7 @@ def _fetch(query: dict, settings: dict) -> dict:
     for group in _chunks(others, batch_size):
         names = ([anchor] + list(group)) if anchor else list(group)
         body = {"startDate": start.isoformat(), "endDate": end.isoformat(),
-                "timeUnit": "date",
+                "timeUnit": time_unit,
                 "keywordGroups": [{"groupName": t, "keywords": [t]} for t in names]}
         try:
             r = httpx.post(_URL, json=body, headers=headers, timeout=30)
@@ -71,14 +77,15 @@ def _fetch(query: dict, settings: dict) -> dict:
     return {"results": out, "errors": errs}
 
 
-def _parse(payload: dict, query: dict, lens: str, collected_at: datetime) -> list[Item]:
+def _parse(payload: dict, query: dict, lens: str, collected_at: datetime,
+           item_type: str = "search_term") -> list[Item]:
     items: list[Item] = []
     for res in payload.get("results", []):
         series = res["series"]
         latest = series[-1]["value"] if series else 0.0
         peak = max((p["value"] for p in series), default=0.0)
         items.append(Item(
-            source=SOURCE, lens=lens, type="search_term", title=res["title"],
+            source=SOURCE, lens=lens, type=item_type, title=res["title"],
             metrics={"interest": latest, "peak": peak},
             collected_at=collected_at, raw={"series": series},
         ))
@@ -86,10 +93,15 @@ def _parse(payload: dict, query: dict, lens: str, collected_at: datetime) -> lis
 
 
 def collect(query: dict, lens: str, *, settings: dict, collected_at: datetime) -> CollectResult:
-    try:
-        payload = _fetch(query, settings)
-    except Exception as exc:
-        return CollectResult(errors=[CollectError(source=SOURCE, message=str(exc))])
-    items = _parse(payload, query, lens, collected_at)
-    errs = [CollectError(source=SOURCE, message=m) for m in payload.get("errors", [])]
-    return CollectResult(items=items, errors=errs)
+    items: list[Item] = []
+    errors: list[CollectError] = []
+    for time_unit, days, item_type in _PASSES:
+        try:
+            payload = _fetch(query, settings, time_unit=time_unit, days=days)
+        except Exception as exc:
+            errors.append(CollectError(source=SOURCE, message=f"{time_unit}: {exc}"))
+            continue
+        items.extend(_parse(payload, query, lens, collected_at, item_type=item_type))
+        errors.extend(CollectError(source=SOURCE, message=f"{time_unit}: {m}")
+                      for m in payload.get("errors", []))
+    return CollectResult(items=items, errors=errors)

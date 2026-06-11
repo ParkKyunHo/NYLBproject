@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from nylb.core import opportunity
 from nylb.core.context import contextualize
 from nylb.core.discover import discover_candidates
 from nylb.core.schema import ScanResult
+from nylb.core.season import monthly_profile, season_summary
 from nylb.core.verify import verify_rising
 
 _COLORS = {"소금빵": "var(--salt)", "베이글": "var(--bagel)", "크로플": "var(--croffle)"}
@@ -52,9 +54,18 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
     # chart_data always populates radar_categories; query fallback covers hand-built chart dicts.
     cats = chart.get("radar_categories", {}) or result.query.get("radar_categories", {})
 
+    # Seasonality: 3-year monthly series (DataLab) -> per-term seasonal summary.
+    monthly_src = chart.get("monthly", {}) or {}
+    monthly = monthly_src.get(source, {}) or monthly_src.get("naver_datalab", {})
+    month_now = result.finished_at.month
+    season_of = {term: season_summary(monthly_profile(series), month_now)
+                 for term, series in monthly.items()}
+
     def _ctx(term, st):
         cm = contextualize(term, st, rank_of.get(term), total)
         cm["category"] = cats.get(term, "core" if term in core_set else "radar")
+        cm["spark"] = list(st.get("daily", {}).values())[-31:]
+        cm["season"] = season_of.get(term)
         return cm
 
     core_signals = [_ctx(t, tstats[t]) for t in core if t in tstats]
@@ -81,6 +92,8 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
         cm = contextualize(term, scaled, None, len(brand_terms))
         cm["momentum"] = round(cm["momentum"], 1)
         cm["category"] = _BRAND_CAT
+        cm["spark"] = list(st.get("daily", {}).values())[-31:]  # shape-only, scale-free
+        cm["season"] = None
         return cm
 
     brand_signals = [_brand_ctx(t, st) for t, st in brand_terms]
@@ -105,6 +118,25 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
     biggest = movers[0] if movers else None
     n_dropped = sum(result.dropped_by_source.values())
 
+    # 지금 뜨는 제품: positive-momentum products only (no brands), top 6.
+    rising_products = [c for c in movers if c.get("momentum", 0.0) > 0][:6]
+
+    # 신메뉴 기회 보드: radar(=not yet ours, not a brand) terms scored by the
+    # disclosed deterministic formula. Ranking only — judgement stays with the owner.
+    opportunities = sorted(
+        ({**c, "opportunity": opportunity.score(c, c.get("season"))} for c in radar),
+        key=lambda c: c["opportunity"]["score"], reverse=True)[:8]
+
+    # 시즌 캘린더: every product term with a seasonal profile, prep-window first.
+    _SEASON_ORDER = {"entering": 0, "in_season": 1, "off": 2, "no_data": 3}
+    season_calendar = sorted(
+        ({"term": c["term"], "category": c["category"], "value": c["value"],
+          "season": c["season"]}
+         for c in core_signals + radar if c.get("season")),
+        key=lambda e: (_SEASON_ORDER.get(e["season"]["status"], 9),
+                       -(e["season"].get("next_index") or 0.0),
+                       -(e["season"].get("now_index") or 0.0)))
+
     label = {"naver_datalab": "네이버 데이터랩",
              "google_trends": "Google Trends"}.get(source, source)
     counts = chart["counts"]
@@ -119,6 +151,12 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
                   for src, n in result.dropped_by_source.items()]
     data_trust.append({"note": "검색 관심도는 0~100 상대 정규화 지표 — "
                                "절대 수요 우열로 단정 금지", "severity": "info"})
+    if season_of:
+        data_trust.append({"note": "시즌 지수는 약 3년 월별 평균(자기 평균=100) 기반 — "
+                                   "표본 12개월 미만 용어는 저신뢰 표시", "severity": "info"})
+        data_trust.append({"note": "기회 점수는 공개 공식의 결정론 합산"
+                                   f"({opportunity.FORMULA_LABEL}) — 평결 아님",
+                           "severity": "info"})
 
     return {
         "meta": {
@@ -142,6 +180,9 @@ def build_board(result: ScanResult, chart: dict, news_context=None) -> dict:
         },
         "core_signals": core_signals,
         "radar": radar,
+        "movers": rising_products,
+        "opportunities": opportunities,
+        "season_calendar": season_calendar,
         "brand_ranking": brand_ranking,
         "brand_signals": brand_signals,
         "unverified_raw": verdict["unverified"],

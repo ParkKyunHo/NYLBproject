@@ -34,10 +34,13 @@ def extract_chart_data(result: ScanResult) -> dict:
         counts[it.source] += 1
 
     trends: dict[str, dict] = {s: {} for s in _TREND_SOURCES}
+    monthly: dict[str, dict] = {s: {} for s in _TREND_SOURCES}
     rising: list[dict] = []
     for it in result.items:
         if it.source in _TREND_SOURCES and it.type == "search_term":
             trends[it.source][it.title] = _trend_stats(it.raw.get("series", []))
+        elif it.source in _TREND_SOURCES and it.type == "search_term_monthly":
+            monthly[it.source][it.title] = it.raw.get("series", [])
         elif it.type == "rising_query":
             rising.append({"seed": it.raw.get("seed", ""), "query": it.title,
                            "value": it.metrics.get("value", 0.0)})
@@ -95,6 +98,7 @@ def extract_chart_data(result: ScanResult) -> dict:
     return {
         "counts": dict(counts),
         "trends": {s: trends[s] for s in _TREND_SOURCES},
+        "monthly": {s: monthly[s] for s in _TREND_SOURCES},
         "matrix": matrix,
         "rising": rising,
         "competitors": competitors,

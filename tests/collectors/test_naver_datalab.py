@@ -55,3 +55,30 @@ def test_fetch_requires_credentials():
     import pytest
     with pytest.raises(RuntimeError):
         dl._fetch({"keywords": ["베이글"]}, {})
+
+
+def test_collect_runs_daily_and_monthly_passes(monkeypatch):
+    bodies = []
+
+    class FakeResp:
+        def __init__(self, names): self._names = names
+        def raise_for_status(self): pass
+        def json(self):
+            return {"results": [
+                {"title": n, "data": [{"period": "2026-06-01", "ratio": 10.0}]}
+                for n in self._names]}
+
+    def fake_post(url, json, headers, timeout):
+        bodies.append(json)
+        return FakeResp([g["groupName"] for g in json["keywordGroups"]])
+
+    monkeypatch.setattr(dl.httpx, "post", fake_post)
+    res = dl.collect({"keywords": ["베이글"]}, "menu",
+                     settings={"naver_client_id": "x", "naver_client_secret": "y"},
+                     collected_at=NOW)
+    assert {b["timeUnit"] for b in bodies} == {"date", "month"}
+    assert {it.type for it in res.items} == {"search_term", "search_term_monthly"}
+    monthly_body = next(b for b in bodies if b["timeUnit"] == "month")
+    start_year = int(monthly_body["startDate"][:4])
+    end_year = int(monthly_body["endDate"][:4])
+    assert end_year - start_year >= 2   # ~3-year lookback for seasonality

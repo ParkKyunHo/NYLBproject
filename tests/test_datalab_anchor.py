@@ -54,7 +54,8 @@ def test_one_batch_failure_keeps_others(monkeypatch):
     titles = {it.title for it in res.items}
     assert "t1" in titles and "베이글" in titles    # batch1 survived
     assert "t5" not in titles                        # failed batch's terms dropped
-    assert len(res.errors) == 1                       # partial error surfaced, not fatal
+    # batch2 fails once per pass (daily + monthly) — surfaced, not fatal
+    assert len(res.errors) == 2
 
 
 def test_no_anchor_falls_back_to_legacy(monkeypatch):
